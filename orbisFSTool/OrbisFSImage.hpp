@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <functional>
 
 #include <stdint.h>
 #include <stddef.h>
