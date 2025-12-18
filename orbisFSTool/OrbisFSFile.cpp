@@ -48,10 +48,11 @@ OrbisFSFile::~OrbisFSFile(){
 #pragma mark OrbisFSFile private
 uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
     retassure(_node->fatStages, "File has no data");
-    
+    const uint32_t linkElemsPerPage = _blockSize/sizeof(OrbisFSChainLink_t);
+
     retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
     if (_node->fatStages == 1){
-        if (num < _blockSize/sizeof(OrbisFSChainLink_t)) {
+        if (num < linkElemsPerPage) {
             return _parent->getBlock(_node->dataLnk[0].blk);
         }
         reterror("TODO mulinum single stage lookup");
@@ -61,11 +62,23 @@ uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
         Multistage lookup here
      */
     OrbisFSChainLink_t *fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[0].blk);
-    for (int i=2; i<_node->fatStages; i++) {
-        reterror("TODO multistage lookup");
+    if (_node->fatStages >= 3) {
+        retassure(_node->fatStages < 4, "4 level stage lookup not supported");
+        /*
+            Stage 3 lookup
+         */
+        uint64_t linkElemsPerStage2 = (uint64_t)linkElemsPerPage * (uint64_t)linkElemsPerPage;
+        retassure(num < linkElemsPerStage2, "Trying to access out of bounds block on stage 3 lookup");
+        uint32_t stage3Idx = num / linkElemsPerPage;
+        num %= linkElemsPerPage;
+        fat = &fat[stage3Idx];
+        retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x in stage 3 lookup",fat->type);
+        fat = (OrbisFSChainLink_t*)_parent->getBlock(fat->blk);
     }
     
-    //last stage lookup
+    /*
+        Stage 2 lookup
+     */
     fat = &fat[num];
     retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
     return _parent->getBlock(fat->blk);
