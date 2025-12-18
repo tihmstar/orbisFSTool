@@ -10,20 +10,27 @@
 #include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
 
-#include <getopt.h>
-
 #include <sys/stat.h>
+
+#include <getopt.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
 using namespace orbisFSTool;
 
 static struct option longopts[] = {
     { "help",               no_argument,        NULL, 'h' },
+    { "extract",            optional_argument,  NULL, 'e' },
     { "input",              required_argument,  NULL, 'i' },
-    { "list",               required_argument,  NULL, 'l' },
+    { "output",             required_argument,  NULL, 'o' },
+    { "path",               required_argument,  NULL, 'p' },
+    { "list",               optional_argument,  NULL, 'l' },
     { "recursive",          no_argument,        NULL, 'r' },
     { "verbose",            no_argument,        NULL, 'v' },
     { "writeable",          no_argument,        NULL, 'w' },
 
+    { "inode",              required_argument,  NULL,  0  },
     { "mount",              required_argument,  NULL,  0  },
     { "offset",             required_argument,  NULL,  0  },
     { NULL, 0, NULL, 0 }
@@ -34,11 +41,15 @@ void cmd_help(){
            "Usage: orbisFSTool [OPTIONS]\n"
            "Work with orbisFS disk images\n\n"
            "  -h, --help\t\t\t\tprints usage information\n"
+           "  -e, --extract [path]\t\t\textract path from image)\n"
            "  -i, --input <path>\t\t\tinput file (or blockdevice)\n"
-           "  -l, --list <path>\t\t\tlist files at path\n"
+           "  -l, --list [path]\t\t\tlist files at path\n"
+           "  -o, --output <path>\t\toutput path\n"
+           "  -p, --path <path>\t\tpath inside image\n"
            "  -r, --recursive\t\t\tperform operation recursively\n"
            "  -v, --verbose\t\t\tincrease logging output\n"
            "  -w, --writeable\t\t\topen image in write mode\n"
+           "      --inode <num>\t\t\tspecify file by Inode instead of path\n"
            "      --mount <path>\t\t\tpath to mount\n"
            "      --offset <cnt>\t\t\toffset inside image\n"
            "\n"
@@ -89,24 +100,31 @@ int main_r(int argc, const char * argv[]) {
     int opt = 0;
     
     const char *infile = NULL;
+    const char *outfile = NULL;
     const char *mountPath = NULL;
     
-    const char *listPath = NULL;
+    std::string imagePath;
 
     uint64_t offset = 0;
+    uint32_t iNode = 0;
     
     int verbosity = 0;
     
     bool writeable = false;
     bool recursive = false;
+
+    bool doList = false;
+    bool doExtract = false;
     
-    while ((opt = getopt_long(argc, (char* const *)argv, "hi:l:rvw", longopts, &optindex)) >= 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "he::i:l::o:rvw", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0: //long opts
             {
                 std::string curopt = longopts[optindex].name;
 
-                if (curopt == "mount") {
+                if (curopt == "inode") {
+                    iNode = atoi(optarg);
+                }else if (curopt == "mount"){
                     mountPath = optarg;
                 }else if (curopt == "offset"){
                     offset = parseNum(optarg);
@@ -120,12 +138,33 @@ int main_r(int argc, const char * argv[]) {
                 cmd_help();
                 return 0;
                 
+            case 'e':
+                if (optarg) {
+                    retassure(!imagePath.size(), "Image path already set");
+                    imagePath = optarg;
+                }
+                doExtract = true;
+                break;
+
             case 'i':
                 infile = optarg;
                 break;
                 
             case 'l':
-                listPath = optarg;
+                if (optarg) {
+                    retassure(!imagePath.size(), "Image path already set");
+                    imagePath = optarg;
+                }
+                doList = true;
+                break;
+
+            case 'o':
+                outfile = optarg;
+                break;
+
+            case 'p':
+                retassure(!imagePath.size(), "Image path already set");
+                imagePath = optarg;
                 break;
 
             case 'r':
@@ -155,8 +194,35 @@ int main_r(int argc, const char * argv[]) {
     
     OrbisFSImage img(infile, writeable, offset);
     
-    if (listPath) {
-        img.iterateOverFilesInFolder(listPath, recursive, [&](std::string path, OrbisFSInode_t node){
+    if (!imagePath.size() && iNode) imagePath = img.getPathForInode(iNode);
+    
+    if (doExtract) {
+        retassure(outfile, "No outputpath specified");
+        retassure(imagePath.size(), "No path for extraction specified");
+        uint8_t *buf = NULL;
+        int fd = -1;
+        cleanup([&]{
+            safeClose(fd);
+            safeFree(buf);
+        });
+        size_t bufSize = img.getBlocksize();
+        
+        auto f = img.openFilAtPath(imagePath);
+        uint64_t size = f->size();
+        if (bufSize > size) bufSize = size;
+        assure(buf = (uint8_t*)calloc(1, bufSize));
+        retassure((fd = open(outfile, O_CREAT | O_WRONLY, 0644)) != -1, "Failed to create output file '%s' errno=%d (%s)",outfile,errno,strerror(errno));
+        
+        while (size) {
+            size_t didread = 0;
+            retassure(didread = f->read(buf, bufSize), "Failed to read file");
+            retassure(write(fd, buf, bufSize) == bufSize, "Failed to write data to file '%s'",outfile);
+            size -= didread;
+        }
+        info("Extracted '%s' to '%s'",imagePath.c_str(),outfile);
+    } else if (doList) {
+        if (!imagePath.size()) imagePath = "/";
+        img.iterateOverFilesInFolder(imagePath, recursive, [&](std::string path, OrbisFSInode_t node){
             if (path.back() == '/') path.pop_back();
             std::string printInfo;
             

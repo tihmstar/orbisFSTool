@@ -19,6 +19,7 @@ using namespace orbisFSTool;
 #pragma mark OrbisFSInodeDirectory
 OrbisFSInodeDirectory::OrbisFSInodeDirectory(OrbisFSImage *parent, uint32_t inodeRootDirBlock)
 : _parent(parent)
+, _elemsPerBlock(_parent->getBlocksize() / sizeof(OrbisFSDirectoryElem_t))
 , _inodeRootDir(NULL)
 , _self(NULL)
 {
@@ -26,7 +27,7 @@ OrbisFSInodeDirectory::OrbisFSInodeDirectory(OrbisFSImage *parent, uint32_t inod
     retassure(memvcmp(&_inodeRootDir[0], sizeof(_inodeRootDir[0]), 0x00), "inode 0 is not zero");
     retassure(memvcmp(&_inodeRootDir[1], sizeof(_inodeRootDir[1]), 0x00), "inode 1 is not zero");
     
-    _self = getInode(kOrbisFSInodeRootDirID);
+    _self = findInode(kOrbisFSInodeRootDirID);
 }
 
 OrbisFSInodeDirectory::~OrbisFSInodeDirectory(){
@@ -34,41 +35,19 @@ OrbisFSInodeDirectory::~OrbisFSInodeDirectory(){
 }
 
 #pragma mark OrbisFSInodeDirectory private
-OrbisFSInode_t *OrbisFSInodeDirectory::getInode(uint32_t inodeNum){
-    OrbisFSInode_t *ret = NULL;
-    if (inodeNum < _parent->getBlocksize() / sizeof(*ret)) {
-        ret = &_inodeRootDir[inodeNum];
-    }else {
-        reterror("TODO: implement 2 stage inode lookup");
-    }
-    retcustomassure(OrbisFSInodeBadMagic, ret->magic == ORBIS_FS_INODE_MAGIC, "inode %d entry has bad magic",inodeNum);
-    retassure(ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_EMPTY
-              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK
-              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK, "inode %d entry has unknown entry type %d",inodeNum,ret->entryType);
-    retassure(ret->inodeNum == inodeNum, "inode %d entry has wrong inode num",inodeNum);
-    retassure(memvcmp(&ret->_pad0, sizeof(ret->_pad0), 0x00), "inode %d entry _pad0 is not zero",inodeNum);
-    retassure(memvcmp(&ret->_pad1, sizeof(ret->_pad1), 0x00), "inode %d entry _pad1 is not zero",inodeNum);
-    retassure(memvcmp(&ret->_pad2, sizeof(ret->_pad2), 0x00), "inode %d entry _pad2 is not zero",inodeNum);
-    retassure(memvcmp(&ret->_pad3, sizeof(ret->_pad3), 0x00), "inode %d entry _pad3 is not zero",inodeNum);
-    retassure(memvcmp(&ret->_pad4, sizeof(ret->_pad4), 0x00), "inode %d entry _pad4 is not zero",inodeNum);
-    return ret;
-}
-
 #pragma mark OrbisFSInodeDirectory public
 
 std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listFilesInDir(uint32_t inodeNum){
-    const uint32_t elemsPerBlock = _parent->getBlocksize() / sizeof(OrbisFSDirectoryElem_t);
-    
     std::vector<std::pair<std::string, OrbisFSInode_t>> ret;
     
-    OrbisFSInode_t *node = getInode(inodeNum);
+    OrbisFSInode_t *node = findInode(inodeNum);
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",inodeNum);
     if (node->entryType == ORBIS_FS_INODE_ENTRY_TYPE_EMPTY) return {};
     retassure(node->dataLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
     
     OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk.blk);
     while (true) {
-        for (int i=0; i<elemsPerBlock; i++) {
+        for (int i=0; i<_elemsPerBlock; i++) {
             OrbisFSDirectoryElem_t *curElem = &elems[i];
             if (curElem->inodeNum == 0) goto out;
             
@@ -84,7 +63,7 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
 
             OrbisFSInode_t *curInode = NULL;
             try {
-                curInode = getInode(curElem->inodeNum);
+                curInode = findInode(curElem->inodeNum);
             } catch (tihmstar::OrbisFSInodeBadMagic &e) {
 #ifdef XCODE
                 debug("Ignoring vanished elem '%s'",elemName.c_str());
@@ -105,8 +84,63 @@ out:
     return ret;
 }
 
-OrbisFSInode_t OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
-    return *getInode(inodeNum);
+OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node, std::string childname){
+    retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",node->inodeNum);
+    retassure(node->entryType != ORBIS_FS_INODE_ENTRY_TYPE_EMPTY, "directory is empty");
+    retassure(node->dataLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
+    
+    OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk.blk);
+    while (true) {
+        for (int i=0; i<_elemsPerBlock; i++) {
+            OrbisFSDirectoryElem_t *curElem = &elems[i];
+            if (curElem->inodeNum == 0) goto error;
+            
+            if (curElem->namelen > sizeof(curElem->name)){
+                uint32_t extrablocks = curElem->namelen - sizeof(curElem->name);
+                extrablocks /= sizeof(*curElem);
+                extrablocks++;
+                i+=extrablocks;
+                warning("namelen too large, figure this out!");
+            }
+            std::string elemName{curElem->name,curElem->name+curElem->namelen};
+            if (elemName == "." || elemName == "..") continue;
+            if (elemName != childname) continue;
+            
+            OrbisFSInode_t *curInode = NULL;
+            try {
+                curInode = findInode(curElem->inodeNum);
+            } catch (tihmstar::OrbisFSInodeBadMagic &e) {
+#ifdef XCODE
+                debug("Ignoring vanished elem '%s'",elemName.c_str());
+#endif
+                continue;
+            }
+            return curInode;
+        }
+        reterror("TODO: move to next elems block!");
+    }
+error:
+    reterror("Failed to find child in directory");
+}
+
+OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
+    OrbisFSInode_t *ret = NULL;
+    if (inodeNum < _parent->getBlocksize() / sizeof(*ret)) {
+        ret = &_inodeRootDir[inodeNum];
+    }else {
+        reterror("TODO: implement 2 stage inode lookup");
+    }
+    retcustomassure(OrbisFSInodeBadMagic, ret->magic == ORBIS_FS_INODE_MAGIC, "inode %d entry has bad magic",inodeNum);
+    retassure(ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_EMPTY
+              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK
+              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK, "inode %d entry has unknown entry type %d",inodeNum,ret->entryType);
+    retassure(ret->inodeNum == inodeNum, "inode %d entry has wrong inode num",inodeNum);
+    retassure(memvcmp(&ret->_pad0, sizeof(ret->_pad0), 0x00), "inode %d entry _pad0 is not zero",inodeNum);
+    retassure(memvcmp(&ret->_pad1, sizeof(ret->_pad1), 0x00), "inode %d entry _pad1 is not zero",inodeNum);
+    retassure(memvcmp(&ret->_pad2, sizeof(ret->_pad2), 0x00), "inode %d entry _pad2 is not zero",inodeNum);
+    retassure(memvcmp(&ret->_pad3, sizeof(ret->_pad3), 0x00), "inode %d entry _pad3 is not zero",inodeNum);
+    retassure(memvcmp(&ret->_pad4, sizeof(ret->_pad4), 0x00), "inode %d entry _pad4 is not zero",inodeNum);
+    return ret;
 }
 
 uint32_t OrbisFSInodeDirectory::findInodeIDForPath(std::string path){
@@ -118,10 +152,8 @@ uint32_t OrbisFSInodeDirectory::findInodeIDForPath(std::string path){
         path.pop_back();
     }
 
-    uint32_t target = kOrbisFSRootFolderID;
-    OrbisFSInode_t rec = {};
+    OrbisFSInode_t *rec = findInode(kOrbisFSRootFolderID);
     while (path.size()) {
-        rec = findInode(target);
         ssize_t spos = path.find('/');
         std::string curname;
         if (spos != std::string::npos) {
@@ -132,18 +164,18 @@ uint32_t OrbisFSInodeDirectory::findInodeIDForPath(std::string path){
             path.clear();
         }
         
-        if (S_ISDIR(rec.fileMode)) {
-            reterror("TODO");
-        } else if (S_ISLNK(rec.fileMode)){
+        if (S_ISDIR(rec->fileMode)) {
+            rec = findChildInDirectory(rec, curname);
+        } else if (S_ISLNK(rec->fileMode)){
             reterror("Symlinks currently not support");
         }else{
             reterror("Unexpected type!");
         }
     }
     
-    return target;
+    return rec->inodeNum;
 }
 
-OrbisFSInode_t OrbisFSInodeDirectory::findInodeForPath(std::string path){
+OrbisFSInode_t *OrbisFSInodeDirectory::findInodeForPath(std::string path){
     return findInode(findInodeIDForPath(path));
 }

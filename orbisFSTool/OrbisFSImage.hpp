@@ -11,9 +11,14 @@
 #include "OrbisFSFormat.h"
 #include "OrbisFSBlockAllocator.hpp"
 #include "OrbisFSInodeDirectory.hpp"
+#include "OrbisFSFile.hpp"
+
+#include <libgeneral/Event.hpp>
 
 #include <vector>
 #include <iostream>
+#include <memory>
+#include <mutex>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -32,8 +37,13 @@ class OrbisFSImage{
     OrbisFSBlockAllocator *_blockAllocator;
     OrbisFSInodeDirectory *_inodeDir;
     
+    uint32_t _references;
+    std::mutex _referencesLck;
+    tihmstar::Event _unrefEvent;
+    
     void init();
     uint8_t *getBlock(uint32_t blknum);
+    std::shared_ptr<OrbisFSFile> openFileNode(OrbisFSInode_t *node);
 public:
     OrbisFSImage(const char *path, bool writeable, uint64_t offset = 0);
     ~OrbisFSImage();
@@ -42,11 +52,19 @@ public:
     
     std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(std::string path);
     std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(uint32_t inode);
+    
+    std::string getPathForInode(uint32_t inode);
 
     void iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback);
     
+#pragma mark files
+    std::shared_ptr<OrbisFSFile> openFileID(uint32_t inode);
+    std::shared_ptr<OrbisFSFile> openFilAtPath(std::string path);
+    
+    
 #pragma mark friends
     friend OrbisFSBlockAllocator;
+    friend OrbisFSFile;
     friend OrbisFSInodeDirectory;
 };
 

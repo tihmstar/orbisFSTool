@@ -68,6 +68,7 @@ OrbisFSImage::OrbisFSImage(const char *path, bool writeable, uint64_t offset)
 , _superblock(NULL), _diskinfoblock(NULL)
 , _blockAllocator(nullptr)
 , _inodeDir(nullptr)
+, _references(0)
 {
     retassure((_fd = open(path, writeable ? O_RDWR : O_RDONLY)) != -1, "Failed to open=%s",path);
     {
@@ -117,6 +118,16 @@ OrbisFSImage::OrbisFSImage(const char *path, bool writeable, uint64_t offset)
 }
 
 OrbisFSImage::~OrbisFSImage(){
+    {
+        std::unique_lock<std::mutex> ul(_referencesLck);
+        while (_references) {
+            debug("Waiting for open files to close, %d remaining",_references);
+            uint64_t wevent = _unrefEvent.getNextEvent();
+            ul.unlock();
+            _unrefEvent.waitForEvent(wevent);
+            ul.lock();
+        }
+    }
     safeDelete(_inodeDir);
     safeDelete(_blockAllocator);
     if (_mem){
@@ -230,6 +241,10 @@ uint8_t *OrbisFSImage::getBlock(uint32_t blknum){
     return &_mem[offset];
 }
 
+std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileNode(OrbisFSInode_t *node){
+    return std::make_shared<OrbisFSFile>(this, node);
+}
+
 #pragma mark OrbisFSImage public
 uint32_t OrbisFSImage::getBlocksize(){
     return BLOCK_SIZE;
@@ -243,6 +258,18 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFol
     return _inodeDir->listFilesInDir(inode);
 }
 
+std::string OrbisFSImage::getPathForInode(uint32_t inode){
+    reterror("TODO");
+}
+
+std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileID(uint32_t inode){
+    return openFileNode(_inodeDir->findInode(inode));
+}
+
+std::shared_ptr<OrbisFSFile> OrbisFSImage::openFilAtPath(std::string path){
+    return openFileNode(_inodeDir->findInodeForPath(path));
+}
+
 void OrbisFSImage::iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback){
     std::vector<std::pair<std::string, OrbisFSInode_t>> files;
     std::pair<std::string, OrbisFSInode_t> curpath = {path,{}};
@@ -254,7 +281,7 @@ void OrbisFSImage::iterateOverFilesInFolder(std::string path, bool recursive, st
 
         {
             auto r = _inodeDir->findInode(curpath.second.inodeNum);
-            curpath = {curpath.first,r};
+            curpath = {curpath.first,*r};
         }
 
         if (S_ISDIR(curpath.second.fileMode)) {
