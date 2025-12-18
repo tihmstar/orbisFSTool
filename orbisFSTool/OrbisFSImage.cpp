@@ -16,6 +16,8 @@
 #include <fcntl.h>
 #include <string.h>
 
+#include <sys/ioctl.h>
+
 #ifdef HAVE_SYS_DISK_H
 #   include <sys/disk.h>
 #endif //HAVE_SYS_DISK_H
