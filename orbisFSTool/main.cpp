@@ -6,6 +6,7 @@
 //
 
 #include "OrbisFSImage.hpp"
+#include "OrbisFSFuse.hpp"
 
 #include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
@@ -192,9 +193,9 @@ int main_r(int argc, const char * argv[]) {
         return -1;
     }
     
-    OrbisFSImage img(infile, writeable, offset);
+    std::shared_ptr<OrbisFSImage> img = std::make_shared<OrbisFSImage>(infile, writeable, offset);
     
-    if (!imagePath.size() && iNode) imagePath = img.getPathForInode(iNode);
+    if (!imagePath.size() && iNode) imagePath = img->getPathForInode(iNode);
     
     if (doExtract) {
         retassure(outfile, "No outputpath specified");
@@ -205,9 +206,9 @@ int main_r(int argc, const char * argv[]) {
             safeClose(fd);
             safeFree(buf);
         });
-        size_t bufSize = img.getBlocksize();
+        size_t bufSize = img->getBlocksize();
         
-        auto f = img.openFilAtPath(imagePath);
+        auto f = img->openFilAtPath(imagePath);
         uint64_t size = f->size();
         if (bufSize > size) bufSize = size;
         assure(buf = (uint8_t*)calloc(1, bufSize));
@@ -222,7 +223,7 @@ int main_r(int argc, const char * argv[]) {
         info("Extracted '%s' to '%s'",imagePath.c_str(),outfile);
     } else if (doList) {
         if (!imagePath.size()) imagePath = "/";
-        img.iterateOverFilesInFolder(imagePath, recursive, [&](std::string path, OrbisFSInode_t node){
+        img->iterateOverFilesInFolder(imagePath, recursive, [&](std::string path, OrbisFSInode_t node){
             if (path.back() == '/') path.pop_back();
             std::string printInfo;
             
@@ -275,6 +276,10 @@ int main_r(int argc, const char * argv[]) {
             
             printf("%s\n",printInfo.c_str());
         });
+    }else if (mountPath) {
+        info("Mounting disk");
+        OrbisFSFuse off(img, mountPath);
+        off.loopSession();
     }
 
     info("Done");

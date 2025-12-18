@@ -48,19 +48,21 @@ public:
     OrbisFSImage(const char *path, bool writeable, uint64_t offset = 0);
     ~OrbisFSImage();
     
+    bool isWriteable();
     uint32_t getBlocksize();
     
-    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(std::string path);
-    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(uint32_t inode);
+    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(std::string path, bool includeSelfAndParent = false);
+    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(uint32_t inode, bool includeSelfAndParent = false);
     
     std::string getPathForInode(uint32_t inode);
+    OrbisFSInode_t getInodeForPath(std::string path);
 
     void iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback);
     
 #pragma mark files
     std::shared_ptr<OrbisFSFile> openFileID(uint32_t inode);
     std::shared_ptr<OrbisFSFile> openFilAtPath(std::string path);
-    
+
     
 #pragma mark friends
     friend OrbisFSBlockAllocator;

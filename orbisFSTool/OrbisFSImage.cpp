@@ -251,20 +251,28 @@ std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileNode(OrbisFSInode_t *node){
 }
 
 #pragma mark OrbisFSImage public
+bool OrbisFSImage::isWriteable(){
+    return _writeable;
+}
+
 uint32_t OrbisFSImage::getBlocksize(){
     return BLOCK_SIZE;
 }
 
-std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(std::string path){
-    return _inodeDir->listFilesInDir(_inodeDir->findInodeIDForPath(path));
+std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(std::string path, bool includeSelfAndParent){
+    return _inodeDir->listFilesInDir(_inodeDir->findInodeIDForPath(path), includeSelfAndParent);
 }
 
-std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(uint32_t inode){
-    return _inodeDir->listFilesInDir(inode);
+std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(uint32_t inode, bool includeSelfAndParent){
+    return _inodeDir->listFilesInDir(inode, includeSelfAndParent);
 }
 
 std::string OrbisFSImage::getPathForInode(uint32_t inode){
     reterror("TODO");
+}
+
+OrbisFSInode_t OrbisFSImage::getInodeForPath(std::string path){
+    return *_inodeDir->findInodeForPath(path);
 }
 
 std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileID(uint32_t inode){

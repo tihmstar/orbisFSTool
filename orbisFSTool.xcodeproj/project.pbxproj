@@ -17,6 +17,8 @@
 		8768A7902EF3E9F400795808 /* OrbisFSException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A78F2EF3E9F400795808 /* OrbisFSException.cpp */; };
 		8768A7932EF45BBB00795808 /* OrbisFSFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A7922EF45BBB00795808 /* OrbisFSFile.cpp */; };
 		8768A7962EF48A1E00795808 /* OrbisFSFuse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A7952EF48A1E00795808 /* OrbisFSFuse.cpp */; };
+		8768A7982EF4961F00795808 /* libfuse.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 8768A7972EF4961F00795808 /* libfuse.2.dylib */; };
+		8768A7992EF4961F00795808 /* libfuse.2.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 8768A7972EF4961F00795808 /* libfuse.2.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -36,6 +38,7 @@
 			dstSubfolderSpec = 10;
 			files = (
 				8768A77F2EF1D05B00795808 /* libgeneral.0.dylib in Embed Libraries */,
+				8768A7992EF4961F00795808 /* libfuse.2.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,6 +64,7 @@
 		8768A7922EF45BBB00795808 /* OrbisFSFile.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OrbisFSFile.cpp; sourceTree = "<group>"; };
 		8768A7942EF48A1E00795808 /* OrbisFSFuse.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OrbisFSFuse.hpp; sourceTree = "<group>"; };
 		8768A7952EF48A1E00795808 /* OrbisFSFuse.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OrbisFSFuse.cpp; sourceTree = "<group>"; };
+		8768A7972EF4961F00795808 /* libfuse.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfuse.2.dylib; path = ../../../../usr/local/lib/libfuse.2.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +73,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8768A77E2EF1D05B00795808 /* libgeneral.0.dylib in Frameworks */,
+				8768A7982EF4961F00795808 /* libfuse.2.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +123,7 @@
 		8768A77C2EF1D05B00795808 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				8768A7972EF4961F00795808 /* libfuse.2.dylib */,
 				8768A77D2EF1D05B00795808 /* libgeneral.0.dylib */,
 			);
 			name = Frameworks;
@@ -322,6 +328,8 @@
 					"$(inherited)",
 					XCODE,
 					HAVE_SYS_DISK_H,
+					HAVE_FUSE,
+					"_FILE_OFFSET_BITS=64",
 				);
 				HEADER_SEARCH_PATHS = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;

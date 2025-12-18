@@ -34,7 +34,7 @@ public:
     OrbisFSInodeDirectory(OrbisFSImage *parent, uint32_t inodeRootDirBlock);
     ~OrbisFSInodeDirectory();
 
-    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInDir(uint32_t inodeNum);
+    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInDir(uint32_t inodeNum, bool includeSelfAndParent = false);
 
     OrbisFSInode_t *findChildInDirectory(OrbisFSInode_t *node, std::string childname);
 

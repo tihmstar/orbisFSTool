@@ -16,6 +16,8 @@ EASY_BASE_EXCEPTION(OrbisFSException);
 //custom exceptions
 EASY_EXCEPTION(OrbisFSInodeBadMagic, OrbisFSException);
 
+EASY_EXCEPTION(OrbisFSFileNotFound, OrbisFSException);
+
 
 }
 

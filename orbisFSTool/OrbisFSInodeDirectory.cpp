@@ -35,7 +35,7 @@ OrbisFSInodeDirectory::~OrbisFSInodeDirectory(){
 #pragma mark OrbisFSInodeDirectory private
 #pragma mark OrbisFSInodeDirectory public
 
-std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listFilesInDir(uint32_t inodeNum){
+std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listFilesInDir(uint32_t inodeNum, bool includeSelfAndParent){
     std::vector<std::pair<std::string, OrbisFSInode_t>> ret;
     
     OrbisFSInode_t *node = findInode(inodeNum);
@@ -51,7 +51,7 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
             
             retassure(sizeof(*curElem)+curElem->namelen <= curElem->elemSize, "namelen too long");
             std::string elemName{curElem->name,curElem->name+curElem->namelen};
-            if (elemName == "." || elemName == "..") continue;
+            if (!includeSelfAndParent && (elemName == "." || elemName == "..")) continue;
 
             OrbisFSInode_t *curInode = NULL;
             try {
@@ -108,7 +108,7 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node
         }
     }
 error:
-    reterror("Failed to find child in directory");
+    retcustomerror(OrbisFSFileNotFound,"Failed to find child '%s' in directory",childname.c_str());
 }
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
