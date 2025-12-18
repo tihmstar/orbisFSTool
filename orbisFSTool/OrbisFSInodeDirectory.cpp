@@ -12,6 +12,8 @@
 
 #include <libgeneral/macros.h>
 
+#include <functional>
+
 #include <sys/stat.h>
 
 using namespace orbisFSTool;

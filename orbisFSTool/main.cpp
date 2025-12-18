@@ -11,6 +11,8 @@
 #include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
 
+#include <functional>
+
 #include <sys/stat.h>
 
 #include <getopt.h>
