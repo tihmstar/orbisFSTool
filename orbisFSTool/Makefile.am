@@ -8,6 +8,7 @@ orbisFSTool_CFLAGS = $(AM_CFLAGS)
 orbisFSTool_CXXFLAGS = $(AM_CXXFLAGS)
 orbisFSTool_LDFLAGS = $(AM_LDFLAGS)
 orbisFSTool_SOURCES = main.cpp \
+                      utils.cpp \
                       OrbisFSBlockAllocator.cpp \
                       OrbisFSException.cpp \
                       OrbisFSFile.cpp \
