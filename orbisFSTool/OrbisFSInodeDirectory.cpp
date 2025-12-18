@@ -12,7 +12,7 @@
 
 #include <libgeneral/macros.h>
 
-#include <functional>
+#include <algorithm>
 
 #include <sys/stat.h>
 

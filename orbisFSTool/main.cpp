@@ -11,7 +11,7 @@
 #include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
 
-#include <functional>
+#include <algorithm>
 
 #include <sys/stat.h>
 
