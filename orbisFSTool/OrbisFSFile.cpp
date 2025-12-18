@@ -67,9 +67,8 @@ uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
         /*
             Stage 3 lookup
          */
-        uint64_t linkElemsPerStage2 = (uint64_t)linkElemsPerPage * (uint64_t)linkElemsPerPage;
-        retassure(num < linkElemsPerStage2, "Trying to access out of bounds block on stage 3 lookup");
         uint32_t stage3Idx = num / linkElemsPerPage;
+        retassure(stage3Idx < linkElemsPerPage, "Trying to access out of bounds block on stage 3 lookup");
         num %= linkElemsPerPage;
         fat = &fat[stage3Idx];
         retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x in stage 3 lookup",fat->type);
