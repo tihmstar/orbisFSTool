@@ -47,17 +47,26 @@ OrbisFSFile::~OrbisFSFile(){
 
 #pragma mark OrbisFSFile private
 uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
-    retassure(_node->dataLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk.type);
-
-    OrbisFSChainLink_t *fat = NULL;
+    retassure(_node->fatStages, "File has no data");
     
-    if (num < _blockSize/sizeof(OrbisFSChainLink_t)) {
-        fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk.blk);
-        fat = &fat[num];
-    }else{
-        reterror("TODO lookup more fat blocks?");
+    retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
+    if (_node->fatStages == 1){
+        if (num < _blockSize/sizeof(OrbisFSChainLink_t)) {
+            return _parent->getBlock(_node->dataLnk[0].blk);
+        }
+        reterror("TODO mulinum single stage lookup");
+    }
+
+    /*
+        Multistage lookup here
+     */
+    OrbisFSChainLink_t *fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[0].blk);
+    for (int i=2; i<_node->fatStages; i++) {
+        reterror("TODO multistage lookup");
     }
     
+    //last stage lookup
+    fat = &fat[num];
     retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
     return _parent->getBlock(fat->blk);
 }

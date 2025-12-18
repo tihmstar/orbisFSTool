@@ -79,33 +79,30 @@ typedef struct {
 #define ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK       1
 #define ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK        2
 
-typedef union {
-    uint8_t raw[0x100];
-    struct {
-        uint32_t magic;         //should be ORBIS_FS_INODE_MAGIC
-        uint32_t entryType;
-        uint32_t inodeNum;
-        uint32_t _pad0;
-        uint16_t fileMode;
-        uint8_t _pad1[6];     //should be zero
-        uint64_t unk1;
-        uint32_t unk2;
-        uint32_t unk3;
-        uint64_t filesize;
-        uint32_t unk4;
-        uint32_t unk5;
-        uint64_t unk6;
-        uint64_t createDate;
-        uint64_t _pad2;         //should be zero
-        uint64_t accessOrModDate;
-        uint64_t _pad3;         //should be zero
-        uint64_t modOrAccessData;
-        uint64_t _pad4;         //should be zero
-        OrbisFSChainLink_t resourceLnkMaybe;
-        uint32_t unk13;
-        uint64_t unk14;
-        OrbisFSChainLink_t dataLnk;
-    };
+typedef struct {
+    uint32_t magic;         //should be ORBIS_FS_INODE_MAGIC
+    uint32_t fatStages;
+    uint32_t inodeNum;
+    uint32_t _pad0;
+    uint16_t fileMode;
+    uint8_t _pad1[6];     //should be zero
+    uint64_t unk1;
+    uint32_t unk2;
+    uint32_t unk3;
+    uint64_t filesize;
+    uint32_t unk4;
+    uint32_t unk5;
+    uint64_t unk6;
+    uint64_t createDate;
+    uint64_t _pad2;         //should be zero
+    uint64_t accessOrModDate;
+    uint64_t _pad3;         //should be zero
+    uint64_t modOrAccessData;
+    uint64_t _pad4;         //should be zero
+    OrbisFSChainLink_t resourceLnkMaybe;
+    uint32_t unk13;
+    uint64_t unk14;
+    OrbisFSChainLink_t dataLnk[0x20];
 } ATTRIBUTE_PACKED OrbisFSInode_t;
 
 typedef struct {
@@ -118,10 +115,10 @@ typedef struct {
 typedef struct {
     uint32_t inodeNum;
     uint32_t unk0;
-    uint32_t flags;
+    uint32_t elemSize;
     uint16_t namelen;
     uint16_t unk2;
-    char name[0x20];
+    char name[];
 } ATTRIBUTE_PACKED OrbisFSDirectoryElem_t;
 
 #endif /* OrbisFSFormat_h */

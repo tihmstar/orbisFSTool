@@ -9,9 +9,11 @@
 #define OrbisFSInodeDirectory_hpp
 
 #include "OrbisFSFormat.h"
+#include "OrbisFSFile.hpp"
 
 #include <vector>
 #include <iostream>
+#include <memory>
 
 #include <stdint.h>
 
@@ -21,10 +23,12 @@ class OrbisFSImage;
 class OrbisFSInodeDirectory {
     OrbisFSImage *_parent; //not owned
     
-    const uint32_t _elemsPerBlock;
-    
+    const uint32_t _blockSize;
+    const uint32_t _inodeElemsPerBlock;
+
     OrbisFSInode_t *_inodeRootDir;
-    OrbisFSInode_t *_self;
+
+    std::shared_ptr<OrbisFSFile> _self;
     
 public:
     OrbisFSInodeDirectory(OrbisFSImage *parent, uint32_t inodeRootDirBlock);

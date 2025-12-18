@@ -19,15 +19,13 @@ using namespace orbisFSTool;
 #pragma mark OrbisFSInodeDirectory
 OrbisFSInodeDirectory::OrbisFSInodeDirectory(OrbisFSImage *parent, uint32_t inodeRootDirBlock)
 : _parent(parent)
-, _elemsPerBlock(_parent->getBlocksize() / sizeof(OrbisFSDirectoryElem_t))
+, _blockSize(_parent->getBlocksize()), _inodeElemsPerBlock(_parent->getBlocksize() / sizeof(OrbisFSInode_t))
 , _inodeRootDir(NULL)
-, _self(NULL)
+, _self(nullptr)
 {
     _inodeRootDir = (OrbisFSInode_t*)_parent->getBlock(inodeRootDirBlock);
     retassure(memvcmp(&_inodeRootDir[0], sizeof(_inodeRootDir[0]), 0x00), "inode 0 is not zero");
     retassure(memvcmp(&_inodeRootDir[1], sizeof(_inodeRootDir[1]), 0x00), "inode 1 is not zero");
-    
-    _self = findInode(kOrbisFSInodeRootDirID);
 }
 
 OrbisFSInodeDirectory::~OrbisFSInodeDirectory(){
@@ -42,22 +40,16 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
     
     OrbisFSInode_t *node = findInode(inodeNum);
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",inodeNum);
-    if (node->entryType == ORBIS_FS_INODE_ENTRY_TYPE_EMPTY) return {};
-    retassure(node->dataLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
-    
-    OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk.blk);
-    while (true) {
-        for (int i=0; i<_elemsPerBlock; i++) {
-            OrbisFSDirectoryElem_t *curElem = &elems[i];
-            if (curElem->inodeNum == 0) goto out;
+    if (!node->fatStages) return {};
+    for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
+        retassure(node->dataLnk[dirSize/_blockSize].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
+        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dirSize/_blockSize].blk);
+
+        OrbisFSDirectoryElem_t *curElem = elems;
+        for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
+            retassure(curElem->inodeNum, "unexpected zero elem");
             
-            if (curElem->namelen > sizeof(curElem->name)){
-                uint32_t extrablocks = curElem->namelen - sizeof(curElem->name);
-                extrablocks /= sizeof(*curElem);
-                extrablocks++;
-                i+=extrablocks;
-                warning("namelen too large, figure this out!");
-            }
+            retassure(sizeof(*curElem)+curElem->namelen <= curElem->elemSize, "namelen too long");
             std::string elemName{curElem->name,curElem->name+curElem->namelen};
             if (elemName == "." || elemName == "..") continue;
 
@@ -75,7 +67,6 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
                 *curInode
             });
         }
-        reterror("TODO: move to neext elems block!");
     }
 out:
     std::sort(ret.begin(), ret.end(), [](const std::pair<std::string, OrbisFSInode_t> &a, const std::pair<std::string, OrbisFSInode_t> &b)->bool{
@@ -86,22 +77,17 @@ out:
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node, std::string childname){
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",node->inodeNum);
-    retassure(node->entryType != ORBIS_FS_INODE_ENTRY_TYPE_EMPTY, "directory is empty");
-    retassure(node->dataLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
-    
-    OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk.blk);
-    while (true) {
-        for (int i=0; i<_elemsPerBlock; i++) {
-            OrbisFSDirectoryElem_t *curElem = &elems[i];
+    retassure(node->fatStages, "directory is empty");
+
+    for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
+        retassure(node->dataLnk[dirSize/_blockSize].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
+        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dirSize/_blockSize].blk);
+        OrbisFSDirectoryElem_t *curElem = elems;
+        for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
             if (curElem->inodeNum == 0) goto error;
             
-            if (curElem->namelen > sizeof(curElem->name)){
-                uint32_t extrablocks = curElem->namelen - sizeof(curElem->name);
-                extrablocks /= sizeof(*curElem);
-                extrablocks++;
-                i+=extrablocks;
-                warning("namelen too large, figure this out!");
-            }
+            retassure(curElem->namelen <= sizeof(*curElem)+curElem->elemSize, "namelen too long");
+
             std::string elemName{curElem->name,curElem->name+curElem->namelen};
             if (elemName == "." || elemName == "..") continue;
             if (elemName != childname) continue;
@@ -117,7 +103,9 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node
             }
             return curInode;
         }
-        reterror("TODO: move to next elems block!");
+        if (dirSize + _blockSize < node->filesize){
+            reterror("TODO: move to neext elems block!");
+        }
     }
 error:
     reterror("Failed to find child in directory");
@@ -125,15 +113,16 @@ error:
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
     OrbisFSInode_t *ret = NULL;
-    if (inodeNum < _parent->getBlocksize() / sizeof(*ret)) {
+    if (inodeNum < _inodeElemsPerBlock) {
         ret = &_inodeRootDir[inodeNum];
     }else {
-        reterror("TODO: implement 2 stage inode lookup");
+        if (!_self) _self = _parent->openFileID(kOrbisFSInodeRootDirID);
+        uint32_t inodeBlk = inodeNum/_inodeElemsPerBlock;
+        uint32_t inodeElem = inodeNum % _inodeElemsPerBlock;
+        ret = (OrbisFSInode_t*)_self->getDataBlock(inodeBlk);
+        ret = &ret[inodeElem];
     }
     retcustomassure(OrbisFSInodeBadMagic, ret->magic == ORBIS_FS_INODE_MAGIC, "inode %d entry has bad magic",inodeNum);
-    retassure(ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_EMPTY
-              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK
-              || ret->entryType == ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK, "inode %d entry has unknown entry type %d",inodeNum,ret->entryType);
     retassure(ret->inodeNum == inodeNum, "inode %d entry has wrong inode num",inodeNum);
     retassure(memvcmp(&ret->_pad0, sizeof(ret->_pad0), 0x00), "inode %d entry _pad0 is not zero",inodeNum);
     retassure(memvcmp(&ret->_pad1, sizeof(ret->_pad1), 0x00), "inode %d entry _pad1 is not zero",inodeNum);

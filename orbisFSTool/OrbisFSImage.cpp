@@ -118,6 +118,11 @@ OrbisFSImage::OrbisFSImage(const char *path, bool writeable, uint64_t offset)
 }
 
 OrbisFSImage::~OrbisFSImage(){
+    /*
+        Close this before other files, because it might contain an open file
+     */
+    safeDelete(_inodeDir);
+    
     {
         std::unique_lock<std::mutex> ul(_referencesLck);
         while (_references) {
@@ -128,7 +133,7 @@ OrbisFSImage::~OrbisFSImage(){
             ul.lock();
         }
     }
-    safeDelete(_inodeDir);
+    
     safeDelete(_blockAllocator);
     if (_mem){
         munmap(_mem, _memsize); _mem = NULL;

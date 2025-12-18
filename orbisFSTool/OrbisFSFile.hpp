@@ -15,6 +15,7 @@
 
 namespace orbisFSTool {
 class OrbisFSImage;
+class OrbisFSInodeDirectory;
 
 class OrbisFSFile {
     OrbisFSImage *_parent; //not owned
@@ -36,6 +37,9 @@ public:
     
     size_t pread(void *buf, size_t len, uint64_t offset);
     size_t pwrite(const void *buf, size_t len, uint64_t offset);
+    
+#pragma mark friends
+    friend OrbisFSInodeDirectory;
 };
 
 }
