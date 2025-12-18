@@ -12,12 +12,16 @@
 
 #include <getopt.h>
 
+#include <sys/stat.h>
+
 using namespace orbisFSTool;
 
 static struct option longopts[] = {
     { "help",               no_argument,        NULL, 'h' },
     { "input",              required_argument,  NULL, 'i' },
     { "list",               required_argument,  NULL, 'l' },
+    { "recursive",          no_argument,        NULL, 'r' },
+    { "verbose",            no_argument,        NULL, 'v' },
     { "writeable",          no_argument,        NULL, 'w' },
 
     { "mount",              required_argument,  NULL,  0  },
@@ -32,6 +36,8 @@ void cmd_help(){
            "  -h, --help\t\t\t\tprints usage information\n"
            "  -i, --input <path>\t\t\tinput file (or blockdevice)\n"
            "  -l, --list <path>\t\t\tlist files at path\n"
+           "  -r, --recursive\t\t\tperform operation recursively\n"
+           "  -v, --verbose\t\t\tincrease logging output\n"
            "  -w, --writeable\t\t\topen image in write mode\n"
            "      --mount <path>\t\t\tpath to mount\n"
            "      --offset <cnt>\t\t\toffset inside image\n"
@@ -89,9 +95,12 @@ int main_r(int argc, const char * argv[]) {
 
     uint64_t offset = 0;
     
-    bool writeable = false;
+    int verbosity = 0;
     
-    while ((opt = getopt_long(argc, (char* const *)argv, "hi:l:w", longopts, &optindex)) >= 0) {
+    bool writeable = false;
+    bool recursive = false;
+    
+    while ((opt = getopt_long(argc, (char* const *)argv, "hi:l:rvw", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0: //long opts
             {
@@ -119,6 +128,14 @@ int main_r(int argc, const char * argv[]) {
                 listPath = optarg;
                 break;
 
+            case 'r':
+                recursive = true;
+                break;
+
+            case 'v':
+                verbosity++;
+                break;
+                
             case 'w':
                 writeable = true;
                 info("Enable writeable mode");
@@ -139,8 +156,59 @@ int main_r(int argc, const char * argv[]) {
     OrbisFSImage img(infile, writeable, offset);
     
     if (listPath) {
-        auto files = img.listFilesAtPath(listPath);
-        reterror("TODO");
+        img.iterateOverFilesInFolder(listPath, recursive, [&](std::string path, OrbisFSInode_t node){
+            if (path.back() == '/') path.pop_back();
+            std::string printInfo;
+            
+            if (verbosity > 0) {
+                if (S_ISDIR(node.fileMode)) printInfo+='d';
+                else if (S_ISLNK(node.fileMode)) printInfo+='l';
+                else printInfo+='-';
+
+                std::string perm;
+                int permNum = node.fileMode & 0777;
+                for (int i=0; i<3; i++) {
+                    int c = permNum & 7;
+                    if (c & 1) perm += 'x';
+                    else perm += '-';
+                    if (c & 2) perm += 'w';
+                    else perm += '-';
+                    if (c & 4) perm += 'r';
+                    else perm += '-';
+                    permNum /= 8;
+                }
+                std::reverse(perm.begin(), perm.end());
+                printInfo += perm;
+                {
+                    char buf[0x400];
+                    uint64_t fsize = S_ISDIR(node.fileMode) ? 0 : node.filesize;
+                    snprintf(buf, sizeof(buf), "%10llu ",fsize);
+                    printInfo += buf;
+                    {
+                        uint64_t usetime = node.accessOrModDate;
+                        time_t t = usetime;
+                        struct tm * timeinfo = localtime (&t);
+                        strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S\t", timeinfo);
+                        printInfo += buf;
+                    }
+                }
+            }
+            
+            if (verbosity > 1) {
+                char buf[0x100] = {};
+                snprintf(buf, sizeof(buf), "(%4d) ", node.inodeNum);
+                printInfo += buf;
+            }
+
+            printInfo += path;
+            if (S_ISDIR(node.fileMode)) {
+                printInfo += '/';
+            }else if (S_ISLNK(node.fileMode)){
+                reterror("Symlinks currently not supported!");
+            }
+            
+            printf("%s\n",printInfo.c_str());
+        });
     }
 
     info("Done");

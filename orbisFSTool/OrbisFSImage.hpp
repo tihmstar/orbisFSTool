@@ -40,7 +40,10 @@ public:
     
     uint32_t getBlocksize();
     
-    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesAtPath(const char *path);
+    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(std::string path);
+    std::vector<std::pair<std::string, OrbisFSInode_t>> listFilesInFolder(uint32_t inode);
+
+    void iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback);
     
 #pragma mark friends
     friend OrbisFSBlockAllocator;

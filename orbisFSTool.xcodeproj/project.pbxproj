@@ -14,6 +14,7 @@
 		8768A7872EF3160900795808 /* OrbisFSBlockAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A7862EF3160900795808 /* OrbisFSBlockAllocator.cpp */; };
 		8768A78A2EF3216600795808 /* OrbisFSInodeDirectory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A7892EF3216600795808 /* OrbisFSInodeDirectory.cpp */; };
 		8768A78D2EF3222300795808 /* utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A78C2EF3222300795808 /* utils.cpp */; };
+		8768A7902EF3E9F400795808 /* OrbisFSException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8768A78F2EF3E9F400795808 /* OrbisFSException.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -52,6 +53,8 @@
 		8768A7892EF3216600795808 /* OrbisFSInodeDirectory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OrbisFSInodeDirectory.cpp; sourceTree = "<group>"; };
 		8768A78B2EF3222300795808 /* utils.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = utils.hpp; sourceTree = "<group>"; };
 		8768A78C2EF3222300795808 /* utils.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = utils.cpp; sourceTree = "<group>"; };
+		8768A78E2EF3E9F400795808 /* OrbisFSException.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OrbisFSException.hpp; sourceTree = "<group>"; };
+		8768A78F2EF3E9F400795808 /* OrbisFSException.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OrbisFSException.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +90,8 @@
 			isa = PBXGroup;
 			children = (
 				8768A7842EF1D63F00795808 /* OrbisFSFormat.h */,
+				8768A78E2EF3E9F400795808 /* OrbisFSException.hpp */,
+				8768A78F2EF3E9F400795808 /* OrbisFSException.cpp */,
 				8768A7852EF3160900795808 /* OrbisFSBlockAllocator.hpp */,
 				8768A7862EF3160900795808 /* OrbisFSBlockAllocator.cpp */,
 				8768A7882EF3216600795808 /* OrbisFSInodeDirectory.hpp */,
@@ -173,6 +178,7 @@
 				8768A78D2EF3222300795808 /* utils.cpp in Sources */,
 				8768A7872EF3160900795808 /* OrbisFSBlockAllocator.cpp in Sources */,
 				8768A78A2EF3216600795808 /* OrbisFSInodeDirectory.cpp in Sources */,
+				8768A7902EF3E9F400795808 /* OrbisFSException.cpp in Sources */,
 				8768A77B2EF1D04B00795808 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

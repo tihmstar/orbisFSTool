@@ -235,12 +235,55 @@ uint32_t OrbisFSImage::getBlocksize(){
     return BLOCK_SIZE;
 }
 
-std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesAtPath(const char *path){
-    std::string p = path;
-    
-    if (p == "/") {
-        return _inodeDir->listFilesInDir(kOrbisFSRootFolderID);
-    }
-    
-    reterror("TODO");
+std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(std::string path){
+    return _inodeDir->listFilesInDir(_inodeDir->findInodeIDForPath(path));
+}
+
+std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSImage::listFilesInFolder(uint32_t inode){
+    return _inodeDir->listFilesInDir(inode);
+}
+
+void OrbisFSImage::iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback){
+    std::vector<std::pair<std::string, OrbisFSInode_t>> files;
+    std::pair<std::string, OrbisFSInode_t> curpath = {path,{}};
+    bool scanFolder = true;
+    curpath.second.inodeNum = _inodeDir->findInodeIDForPath(path);
+    do{
+    loopStart:
+        std::vector<std::pair<std::string, OrbisFSInode_t>> curfiles;
+
+        {
+            auto r = _inodeDir->findInode(curpath.second.inodeNum);
+            curpath = {curpath.first,r};
+        }
+
+        if (S_ISDIR(curpath.second.fileMode)) {
+            if (scanFolder) curfiles = listFilesInFolder(curpath.second.inodeNum);
+            callback(curpath.first,curpath.second);
+        }else{
+            scanFolder = false;
+            files.push_back(curpath);
+        }
+
+        if (scanFolder) {
+            for (auto cp = curfiles.rbegin(); cp != curfiles.rend(); ++cp) {
+                std::string p = curpath.first;
+                if (p.back() != '/') {
+                    p+='/';
+                }
+                p += cp->first;
+                files.push_back({p,cp->second});
+            }
+            scanFolder = recursive;
+        }
+        while (files.size()) {
+            curpath = files.back();
+            files.pop_back();
+            if (S_ISDIR(curpath.second.fileMode)) {
+                goto loopStart; //skip check at the end in case files.size() == 0
+            }else{
+                callback(curpath.first,curpath.second);
+            }
+        }
+    }while(files.size());
 }

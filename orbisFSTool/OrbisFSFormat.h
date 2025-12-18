@@ -75,6 +75,7 @@ typedef struct {
 
 
 #define ORBIS_FS_INODE_MAGIC                        0xbf10
+#define ORBIS_FS_INODE_ENTRY_TYPE_EMPTY             0
 #define ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK       1
 #define ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK        2
 
@@ -83,24 +84,27 @@ typedef union {
     struct {
         uint32_t magic;         //should be ORBIS_FS_INODE_MAGIC
         uint32_t entryType;
-        uint64_t inodeNum;
+        uint32_t inodeNum;
+        uint32_t _pad0;
         uint16_t fileMode;
         uint8_t _pad1[6];     //should be zero
         uint64_t unk1;
         uint32_t unk2;
-        uint32_t children;
+        uint32_t unk3;
         uint64_t filesize;
-        uint64_t unk4;
-        uint64_t unk5;
+        uint32_t unk4;
+        uint32_t unk5;
+        uint64_t unk6;
         uint64_t createDate;
         uint64_t _pad2;         //should be zero
         uint64_t accessOrModDate;
         uint64_t _pad3;         //should be zero
         uint64_t modOrAccessData;
         uint64_t _pad4;         //should be zero
-        uint64_t unk12;
-        uint64_t unk13;
-        OrbisFSChainLink_t resourceLnk;
+        OrbisFSChainLink_t resourceLnkMaybe;
+        uint32_t unk13;
+        uint64_t unk14;
+        OrbisFSChainLink_t dataLnk;
     };
 } ATTRIBUTE_PACKED OrbisFSInode_t;
 
@@ -110,5 +114,14 @@ typedef struct {
     uint32_t totalBlocks;
     uint32_t _pad;
 } ATTRIBUTE_PACKED OrbisFSAllocatorInfoElem_t;
+
+typedef struct {
+    uint32_t inodeNum;
+    uint32_t unk0;
+    uint32_t flags;
+    uint16_t namelen;
+    uint16_t unk2;
+    char name[0x20];
+} ATTRIBUTE_PACKED OrbisFSDirectoryElem_t;
 
 #endif /* OrbisFSFormat_h */
