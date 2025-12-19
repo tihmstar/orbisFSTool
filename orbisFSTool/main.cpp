@@ -7,6 +7,7 @@
 
 #include "OrbisFSImage.hpp"
 #include "OrbisFSFuse.hpp"
+#include "utils.hpp"
 
 #include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
@@ -19,6 +20,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+
+#define ARRAYOF(a) (sizeof(a)/sizeof(*a))
 
 using namespace orbisFSTool;
 
@@ -36,6 +39,9 @@ static struct option longopts[] = {
     { "inode",              required_argument,  NULL,  0  },
     { "mount",              required_argument,  NULL,  0  },
     { "offset",             required_argument,  NULL,  0  },
+
+    //advanced debugging
+    { "dump-inode",         no_argument,        NULL,  0  },
     { NULL, 0, NULL, 0 }
 };
 
@@ -55,6 +61,9 @@ void cmd_help(){
            "      --inode <num>\t\tspecify file by Inode instead of path\n"
            "      --mount <path>\t\tpath to mount\n"
            "      --offset <cnt>\t\toffset inside image\n"
+           "\n"
+           //advanced debugging
+           "      --dump-inode\t\tdump inode structure\n"
            "\n"
            );
 }
@@ -119,6 +128,8 @@ int main_r(int argc, const char * argv[]) {
     bool doList = false;
     bool doExtract = false;
     
+    bool dumpInode = false;
+    
     while ((opt = getopt_long(argc, (char* const *)argv, "he::i:l::o:rvw", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0: //long opts
@@ -131,6 +142,9 @@ int main_r(int argc, const char * argv[]) {
                     mountPath = optarg;
                 }else if (curopt == "offset"){
                     offset = parseNum(optarg);
+
+                }else if (curopt == "dump-inode"){
+                    dumpInode = true;
                 } else {
                     reterror("unexpected lonopt=%s",curopt.c_str());
                 }
@@ -197,7 +211,11 @@ int main_r(int argc, const char * argv[]) {
     
     std::shared_ptr<OrbisFSImage> img = std::make_shared<OrbisFSImage>(infile, writeable, offset);
     
-    if (!imagePath.size() && iNode) imagePath = img->getPathForInode(iNode);
+    if (!imagePath.size() && iNode) {
+        char buf[0x100] = {};
+        snprintf(buf, sizeof(buf), "iNode%d",iNode);
+        imagePath = buf;
+    }
     
     if (doExtract) {
         retassure(outfile, "No outputpath specified");
@@ -253,13 +271,7 @@ int main_r(int argc, const char * argv[]) {
                     uint64_t fsize = S_ISDIR(node.fileMode) ? 0 : node.filesize;
                     snprintf(buf, sizeof(buf), "%10llu ",fsize);
                     printInfo += buf;
-                    {
-                        uint64_t usetime = node.accessOrModDate;
-                        time_t t = usetime;
-                        struct tm * timeinfo = localtime (&t);
-                        strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S\t", timeinfo);
-                        printInfo += buf;
-                    }
+                    printInfo += strForDate(node.accessOrModDate)+"\t";
                 }
             }
             
@@ -277,6 +289,25 @@ int main_r(int argc, const char * argv[]) {
             }
             
             printf("%s\n",printInfo.c_str());
+            if (dumpInode) {
+                printf("Inode:\n");
+                printf("\tmagic             : 0x%08x\n",node.magic);
+                printf("\tfatStages         : 0x%08x\n",node.fatStages);
+                printf("\tinodeNum          : 0x%08x\n",node.inodeNum);
+                printf("\tfileMode          :  o0%o\n",node.fileMode);
+                printf("\tfilesize          : 0x%016llx (%lld)\n",node.filesize,node.filesize);
+                printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
+                printf("\taccessOrModDate   : %10lld (%s)\n",node.accessOrModDate,strForDate(node.accessOrModDate).c_str());
+                printf("\tmodOrAccessData   : %10lld (%s)\n",node.modOrAccessData,strForDate(node.modOrAccessData).c_str());
+                printf("\tresourceLnkMaybe  : type: 0x%02x blk: %d\n",node.resourceLnkMaybe.type,node.resourceLnkMaybe.blk);
+                for (int i=0; i<ARRAYOF(node.dataLnk); i++) {
+                    if (node.dataLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+                    printf("\tdataLnk[%2d]       : type: 0x%02x blk: %d\n",i,node.dataLnk[i].type,node.dataLnk[i].blk);
+                }
+                if (verbosity >= 2) {
+                    DumpHex(&node, sizeof(node));
+                }
+            }
         });
     }else if (mountPath) {
         info("Mounting disk");

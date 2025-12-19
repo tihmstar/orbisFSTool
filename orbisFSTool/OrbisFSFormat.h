@@ -62,9 +62,9 @@ typedef struct {
     uint64_t unk3_is_0;         //is expected to be 0
     char     devpath[0x10];
     uint8_t _pad1[0xf0];
-    uint32_t unk4;
+    uint32_t inodesInRootFolder;//all the child iNodes inside /
     uint32_t unk5_is_0xffffffff;//is expected to be 0xFFFFFFFF
-    uint32_t unk6;
+    uint32_t numInodeSlots;     //highest used iNode is numInodeSlots-1
     uint8_t _pad2[0x34];
     uint64_t blocksUsed;
     uint64_t blocksAvailable;

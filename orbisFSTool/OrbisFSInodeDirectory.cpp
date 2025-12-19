@@ -16,6 +16,8 @@
 
 #include <sys/stat.h>
 
+#define ARRAYOF(a) (sizeof(a)/sizeof(*a))
+
 using namespace orbisFSTool;
 
 #pragma mark OrbisFSInodeDirectory
@@ -44,8 +46,10 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",inodeNum);
     if (!node->fatStages) return {};
     for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
-        retassure(node->dataLnk[dirSize/_blockSize].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
-        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dirSize/_blockSize].blk);
+        uint32_t dataLnkIdx = (int)(dirSize/_blockSize);
+        retassure(dataLnkIdx < ARRAYOF(node->dataLnk), "dataLnkIdx is out of bounds!");
+        retassure(node->dataLnk[dataLnkIdx].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
+        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dataLnkIdx].blk);
 
         OrbisFSDirectoryElem_t *curElem = elems;
         for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
@@ -82,8 +86,10 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node
     retassure(node->fatStages, "directory is empty");
 
     for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
-        retassure(node->dataLnk[dirSize/_blockSize].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
-        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dirSize/_blockSize].blk);
+        uint32_t dataLnkIdx = (int)(dirSize/_blockSize);
+        retassure(dataLnkIdx < ARRAYOF(node->dataLnk), "dataLnkIdx is out of bounds!");
+        retassure(node->dataLnk[dataLnkIdx].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
+        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dataLnkIdx].blk);
         OrbisFSDirectoryElem_t *curElem = elems;
         for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
             if (curElem->inodeNum == 0) goto error;
@@ -114,6 +120,8 @@ error:
 }
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
+    retassure(inodeNum < _parent->_diskinfoblock->numInodeSlots, "Trying to access beyond largest used iNode");
+    
     OrbisFSInode_t *ret = NULL;
     if (inodeNum < _inodeElemsPerBlock) {
         ret = &_inodeRootDir[inodeNum];
@@ -135,6 +143,9 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
 }
 
 uint32_t OrbisFSInodeDirectory::findInodeIDForPath(std::string path){
+    if (strncmp(path.c_str(), "iNode", sizeof("iNode")-1) == 0){
+        return atoi(path.c_str()+sizeof("iNode")-1);
+    }
     retassure(path.front() == '/', "path needs to start with '/'");
     path = path.substr(1);
     bool isLookingForFolder = false;
