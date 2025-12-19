@@ -50,7 +50,7 @@ static int fs_getattr(const char *path, struct stat *stbuf) noexcept{
     /*
         birthtime is not available on linux stat
      */
-    stbuf->st_mtim.tv_sec = node.modOrAccessData;
+    stbuf->st_mtim.tv_sec = node.modOrAccessDate;
     stbuf->st_mtim.tv_nsec = 0;
     stbuf->st_ctim.tv_sec = node.modOrAccessDate;
     stbuf->st_ctim.tv_nsec = 0;
