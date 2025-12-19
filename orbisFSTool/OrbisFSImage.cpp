@@ -201,7 +201,6 @@ void OrbisFSImage::init(){
     retassure(_diskinfoblock->unk1_is_2 == 2, "unexpected value for unk1");
     retassure(_diskinfoblock->unk2_is_0x40 == 0x40, "unexpected value for unk2");
     retassure(_diskinfoblock->unk3_is_0 == 0, "unexpected value for unk3");
-    retassure(memvcmp(_diskinfoblock->_pad1, sizeof(_diskinfoblock->_pad1), 0x00), "_pad1 is not zero");
     retassure(_diskinfoblock->unk5_is_0xffffffff == 0xFFFFFFFF, "unexpected value for unk5");
     retassure(memvcmp(_diskinfoblock->_pad2, sizeof(_diskinfoblock->_pad2), 0x00), "_pad2 is not zero");
     retassure(!memcmp(&_diskinfoblock->diskinfoLnk, &_superblock->diskinfoLnk, sizeof(_superblock->diskinfoLnk)), "diskinfoLnk mismatch between superblock and diskinfoblock");
