@@ -44,35 +44,31 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
     
     OrbisFSInode_t *node = findInode(inodeNum);
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",inodeNum);
-    if (!node->fatStages) return {};
-    for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
-        uint32_t dataLnkIdx = (int)(dirSize/_blockSize);
-        retassure(dataLnkIdx < ARRAYOF(node->dataLnk), "dataLnkIdx is out of bounds!");
-        retassure(node->dataLnk[dataLnkIdx].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",inodeNum);
-        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dataLnkIdx].blk);
+    auto df = _parent->openFileNode(node, true);
+    
+    OrbisFSDirectoryElem_t *elem = NULL;
+    for (uint64_t offset = 0; offset + sizeof(*elem) < node->filesize; offset+= elem->elemSize) {
+        elem = (OrbisFSDirectoryElem_t *)df->getDataForOffset(offset);
+        retassure(elem->inodeNum, "unexpected zero elem");
+        retassure(offset + elem->elemSize <= node->filesize, "elemsize goes oob");
+        retassure(sizeof(*elem)+elem->namelen <= elem->elemSize, "namelen too long");
 
-        OrbisFSDirectoryElem_t *curElem = elems;
-        for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
-            retassure(curElem->inodeNum, "unexpected zero elem");
-            
-            retassure(sizeof(*curElem)+curElem->namelen <= curElem->elemSize, "namelen too long");
-            std::string elemName{curElem->name,curElem->name+curElem->namelen};
-            if (!includeSelfAndParent && (elemName == "." || elemName == "..")) continue;
+        std::string elemName{elem->name,elem->name+elem->namelen};
+        if (!includeSelfAndParent && (elemName == "." || elemName == "..")) continue;
 
-            OrbisFSInode_t *curInode = NULL;
-            try {
-                curInode = findInode(curElem->inodeNum);
-            } catch (tihmstar::OrbisFSInodeBadMagic &e) {
+        OrbisFSInode_t *curInode = NULL;
+        try {
+            curInode = findInode(elem->inodeNum);
+        } catch (tihmstar::OrbisFSInodeBadMagic &e) {
 #ifdef XCODE
-                debug("Ignoring vanished elem '%s'",elemName.c_str());
+            debug("Ignoring vanished elem '%s'",elemName.c_str());
 #endif
-                continue;
-            }
-            ret.push_back({
-                elemName,
-                *curInode
-            });
+            continue;
         }
+        ret.push_back({
+            elemName,
+            *curInode
+        });
     }
 out:
     std::sort(ret.begin(), ret.end(), [](const std::pair<std::string, OrbisFSInode_t> &a, const std::pair<std::string, OrbisFSInode_t> &b)->bool{
@@ -83,34 +79,29 @@ out:
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node, std::string childname){
     retassure(S_ISDIR(node->fileMode), "inode %d is not a directory!",node->inodeNum);
-    retassure(node->fatStages, "directory is empty");
+    auto df = _parent->openFileNode(node, true);
 
-    for (uint64_t dirSize = 0; dirSize < node->filesize; dirSize+=_blockSize) {
-        uint32_t dataLnkIdx = (int)(dirSize/_blockSize);
-        retassure(dataLnkIdx < ARRAYOF(node->dataLnk), "dataLnkIdx is out of bounds!");
-        retassure(node->dataLnk[dataLnkIdx].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "inode %d has invalid data link",node->inodeNum);
-        OrbisFSDirectoryElem_t *elems = (OrbisFSDirectoryElem_t*)_parent->getBlock(node->dataLnk[dataLnkIdx].blk);
-        OrbisFSDirectoryElem_t *curElem = elems;
-        for (; ((uint8_t*)curElem - (uint8_t*)elems) < _blockSize; curElem = (OrbisFSDirectoryElem_t*)(((uint8_t*)curElem) + curElem->elemSize)) {
-            if (curElem->inodeNum == 0) goto error;
-            
-            retassure(curElem->namelen <= sizeof(*curElem)+curElem->elemSize, "namelen too long");
+    OrbisFSDirectoryElem_t *elem = NULL;
+    for (uint64_t offset = 0; offset + sizeof(*elem) < node->filesize; offset+= elem->elemSize) {
+        elem = (OrbisFSDirectoryElem_t *)df->getDataForOffset(offset);
+        retassure(elem->inodeNum, "unexpected zero elem");
+        retassure(offset + elem->elemSize <= node->filesize, "elemsize goes oob");
+        retassure(sizeof(*elem)+elem->namelen <= elem->elemSize, "namelen too long");
 
-            std::string elemName{curElem->name,curElem->name+curElem->namelen};
-            if (elemName == "." || elemName == "..") continue;
-            if (elemName != childname) continue;
-            
-            OrbisFSInode_t *curInode = NULL;
-            try {
-                curInode = findInode(curElem->inodeNum);
-            } catch (tihmstar::OrbisFSInodeBadMagic &e) {
+        std::string elemName{elem->name,elem->name+elem->namelen};
+        if (elemName == "." || elemName == "..") continue;
+        if (elemName != childname) continue;
+
+        OrbisFSInode_t *curInode = NULL;
+        try {
+            curInode = findInode(elem->inodeNum);
+        } catch (tihmstar::OrbisFSInodeBadMagic &e) {
 #ifdef XCODE
-                debug("Ignoring vanished elem '%s'",elemName.c_str());
+            debug("Ignoring vanished elem '%s'",elemName.c_str());
 #endif
-                continue;
-            }
-            return curInode;
+            continue;
         }
+        return curInode;
     }
 error:
     retcustomerror(OrbisFSFileNotFound,"Failed to find child '%s' in directory",childname.c_str());

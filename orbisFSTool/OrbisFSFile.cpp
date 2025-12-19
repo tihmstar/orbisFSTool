@@ -14,17 +14,18 @@
 
 #include <sys/stat.h>
 
+#define ARRAYOF(a) (sizeof(a)/sizeof(*a))
+
 using namespace orbisFSTool;
 
 #pragma mark OrbisFSFile
-OrbisFSFile::OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node)
+OrbisFSFile::OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node, bool noFilemodeChecks)
 : _parent(parent)
 , _node(node)
 , _blockSize(_parent->getBlocksize())
 , _offset(0)
 {
-    
-
+    retassure(noFilemodeChecks || S_ISREG(node->fileMode), "Can't open node %d, which not a regular file",_node->inodeNum);
     {
         /*
             Notify parent, that we exist now
@@ -46,16 +47,14 @@ OrbisFSFile::~OrbisFSFile(){
 }
 
 #pragma mark OrbisFSFile private
-uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
+uint8_t *OrbisFSFile::getDataBlock(uint64_t num){
     retassure(_node->fatStages, "File has no data");
     const uint32_t linkElemsPerPage = _blockSize/sizeof(OrbisFSChainLink_t);
 
     retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
     if (_node->fatStages == 1){
-        if (num < linkElemsPerPage) {
-            return _parent->getBlock(_node->dataLnk[0].blk);
-        }
-        reterror("TODO mulinum single stage lookup");
+        retassure(num < ARRAYOF(_node->dataLnk), "1 level stage lookup out of bounds");
+        return _parent->getBlock(_node->dataLnk[num].blk);
     }
 
     /*
@@ -67,7 +66,7 @@ uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
         /*
             Stage 3 lookup
          */
-        uint32_t stage3Idx = num / linkElemsPerPage;
+        uint64_t stage3Idx = num / linkElemsPerPage;
         retassure(stage3Idx < linkElemsPerPage, "Trying to access out of bounds block on stage 3 lookup");
         num %= linkElemsPerPage;
         fat = &fat[stage3Idx];
@@ -81,6 +80,16 @@ uint8_t *OrbisFSFile::getDataBlock(uint32_t num){
     fat = &fat[num];
     retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
     return _parent->getBlock(fat->blk);
+}
+
+uint8_t *OrbisFSFile::getDataForOffset(uint64_t offset){
+    retassure(offset < _node->filesize, "trying to access data beyond filesize");
+    uint64_t blkIdx = offset/_blockSize;
+    uint64_t blkOffset = offset & (_blockSize-1); //expected to be a power of two
+    
+    uint8_t *blk = getDataBlock(blkIdx);
+    
+    return &blk[blkOffset];
 }
 
 #pragma mark OrbisFSFile public

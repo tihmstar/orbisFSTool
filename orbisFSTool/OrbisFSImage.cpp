@@ -218,8 +218,8 @@ uint8_t *OrbisFSImage::getBlock(uint32_t blknum){
     return &_mem[offset];
 }
 
-std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileNode(OrbisFSInode_t *node){
-    return std::make_shared<OrbisFSFile>(this, node);
+std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileNode(OrbisFSInode_t *node, bool noFilemodeChecks){
+    return std::make_shared<OrbisFSFile>(this, node, noFilemodeChecks);
 }
 
 #pragma mark OrbisFSImage public

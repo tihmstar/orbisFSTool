@@ -44,7 +44,7 @@ class OrbisFSImage{
     
     void init();
     uint8_t *getBlock(uint32_t blknum);
-    std::shared_ptr<OrbisFSFile> openFileNode(OrbisFSInode_t *node);
+    std::shared_ptr<OrbisFSFile> openFileNode(OrbisFSInode_t *node, bool noFilemodeChecks = false);
 public:
     OrbisFSImage(const char *path, bool writeable, uint64_t offset = 0);
     ~OrbisFSImage();

@@ -25,9 +25,10 @@ class OrbisFSFile {
     
     uint64_t _offset;
     
-    uint8_t *getDataBlock(uint32_t num);
+    uint8_t *getDataBlock(uint64_t num);
+    uint8_t *getDataForOffset(uint64_t offset);
 public:
-    OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node);
+    OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node, bool noFilemodeChecks = false);
     ~OrbisFSFile();
     
 #pragma IO operations
