@@ -187,7 +187,7 @@ void OrbisFSImage::init(){
     printf("\tdevpath           : '%.*s'\n",(int)sizeof(_diskinfoblock->devpath),_diskinfoblock->devpath);
     printf("\tinodesInRootFolder: 0x%x (%d)\n",_diskinfoblock->inodesInRootFolder,_diskinfoblock->inodesInRootFolder);
     printf("\tunk5              : 0x%x\n",_diskinfoblock->unk5_is_0xffffffff);
-    printf("\tnumInodeSlots     : 0x%x (%d)\n",_diskinfoblock->numInodeSlots,_diskinfoblock->numInodeSlots);
+    printf("\thighestUsedInode  : 0x%x (%d)\n",_diskinfoblock->highestUsedInode,_diskinfoblock->highestUsedInode);
     printf("\tblocksUsed        : 0x%llx\n",_diskinfoblock->blocksUsed);
     printf("\tblocksAvailable   : 0x%llx\n",_diskinfoblock->blocksAvailable);
 #ifdef DEBUG

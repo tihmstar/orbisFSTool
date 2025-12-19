@@ -62,7 +62,7 @@ typedef struct {
     char     devpath[0x100];
     uint32_t inodesInRootFolder;//all the child iNodes inside /
     uint32_t unk5_is_0xffffffff;//is expected to be 0xFFFFFFFF
-    uint32_t numInodeSlots;     //highest used iNode is numInodeSlots-1
+    uint32_t highestUsedInode;  //not neccessarily in use now, but was in use at some point
     uint8_t _pad2[0x34];
     uint64_t blocksUsed;
     uint64_t blocksAvailable;

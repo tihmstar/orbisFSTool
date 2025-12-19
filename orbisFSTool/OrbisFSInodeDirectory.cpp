@@ -117,7 +117,7 @@ error:
 }
 
 OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
-    retassure(inodeNum < _parent->_diskinfoblock->numInodeSlots, "Trying to access beyond largest used iNode");
+    retassure(inodeNum <= _parent->_diskinfoblock->highestUsedInode, "Trying to access beyond largest used iNode");
     
     OrbisFSInode_t *ret = NULL;
     if (inodeNum < _inodeElemsPerBlock) {

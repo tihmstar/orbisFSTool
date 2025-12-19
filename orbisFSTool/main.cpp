@@ -277,7 +277,7 @@ int main_r(int argc, const char * argv[]) {
             
             if (verbosity > 1) {
                 char buf[0x100] = {};
-                snprintf(buf, sizeof(buf), "(%5d) ", node.inodeNum);
+                snprintf(buf, sizeof(buf), "(%6d) ", node.inodeNum);
                 printInfo += buf;
             }
 
