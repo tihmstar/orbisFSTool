@@ -40,9 +40,9 @@ static int fs_getattr(const char *path, struct stat *stbuf) noexcept{
 #ifdef __APPLE__
     stbuf->st_birthtimespec.tv_sec = node.createDate;
     stbuf->st_birthtimespec.tv_nsec = 0;
-    stbuf->st_mtimespec.tv_sec = node.modOrAccessData;
+    stbuf->st_mtimespec.tv_sec = node.modOrAccessDate;
     stbuf->st_mtimespec.tv_nsec = 0;
-    stbuf->st_ctimespec.tv_sec = node.modOrAccessData;
+    stbuf->st_ctimespec.tv_sec = node.modOrAccessDate;
     stbuf->st_ctimespec.tv_nsec = 0;
     stbuf->st_atimespec.tv_sec = node.accessOrModDate;
     stbuf->st_atimespec.tv_nsec = 0;
@@ -52,7 +52,7 @@ static int fs_getattr(const char *path, struct stat *stbuf) noexcept{
      */
     stbuf->st_mtim.tv_sec = node.modOrAccessData;
     stbuf->st_mtim.tv_nsec = 0;
-    stbuf->st_ctim.tv_sec = node.modOrAccessData;
+    stbuf->st_ctim.tv_sec = node.modOrAccessDate;
     stbuf->st_ctim.tv_nsec = 0;
     stbuf->st_atim.tv_sec = node.accessOrModDate;
     stbuf->st_atim.tv_nsec = 0;

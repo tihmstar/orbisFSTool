@@ -320,7 +320,7 @@ int main_r(int argc, const char * argv[]) {
                 printf("\tfilesize          : 0x%016llx (%lld)\n",node.filesize,node.filesize);
                 printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
                 printf("\taccessOrModDate   : %10lld (%s)\n",node.accessOrModDate,strForDate(node.accessOrModDate).c_str());
-                printf("\tmodOrAccessData   : %10lld (%s)\n",node.modOrAccessData,strForDate(node.modOrAccessData).c_str());
+                printf("\tmodOrAccessDate   : %10lld (%s)\n",node.modOrAccessDate,strForDate(node.modOrAccessDate).c_str());
                 for (int i=0; i<ARRAYOF(node.resourceLnk); i++) {
                     if (node.resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
                     printf("\tresourceLnk[%2d]   : type: 0x%02x blk: %d\n",i,node.resourceLnk[i].type,node.resourceLnk[i].blk);

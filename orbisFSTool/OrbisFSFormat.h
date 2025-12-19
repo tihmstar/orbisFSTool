@@ -91,7 +91,7 @@ typedef struct {
     uint64_t _pad2;         //should be zero
     uint64_t accessOrModDate;
     uint64_t _pad3;         //should be zero
-    uint64_t modOrAccessData;
+    uint64_t modOrAccessDate;
     uint64_t _pad4;         //should be zero
     OrbisFSChainLink_t resourceLnk[4];
     OrbisFSChainLink_t dataLnk[4];
