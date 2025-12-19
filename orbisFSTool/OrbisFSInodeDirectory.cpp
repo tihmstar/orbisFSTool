@@ -127,7 +127,6 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findInode(uint32_t inodeNum){
     retassure(memvcmp(&ret->_pad2, sizeof(ret->_pad2), 0x00), "inode %d entry _pad2 is not zero",inodeNum);
     retassure(memvcmp(&ret->_pad3, sizeof(ret->_pad3), 0x00), "inode %d entry _pad3 is not zero",inodeNum);
     retassure(memvcmp(&ret->_pad4, sizeof(ret->_pad4), 0x00), "inode %d entry _pad4 is not zero",inodeNum);
-    retassure(memvcmp(&ret->_pad5, sizeof(ret->_pad5), 0x00), "inode %d entry _pad5 is not zero",inodeNum);
     return ret;
 }
 

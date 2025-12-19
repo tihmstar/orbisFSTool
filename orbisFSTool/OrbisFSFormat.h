@@ -94,8 +94,7 @@ typedef struct {
     uint64_t modOrAccessDate;
     uint64_t _pad4;         //should be zero
     OrbisFSChainLink_t resourceLnk[4];
-    OrbisFSChainLink_t dataLnk[4];
-    uint8_t _pad5[0x70];
+    OrbisFSChainLink_t dataLnk[0x20];
 } ATTRIBUTE_PACKED OrbisFSInode_t;
 
 typedef struct {
