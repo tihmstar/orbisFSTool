@@ -104,12 +104,22 @@ typedef struct {
     uint32_t _pad;
 } ATTRIBUTE_PACKED OrbisFSAllocatorInfoElem_t;
 
+
+//#define DT_UNKNOWN       0
+//#define DT_FIFO          1
+//#define DT_CHR           2
+#define ORBIS_FS_DIRELEM_TYPE_DIR           4
+//#define DT_BLK           6
+#define ORBIS_FS_DIRELEM_TYPE_REG           8
+//#define DT_LNK          10
+//#define DT_SOCK         12
+//#define DT_WHT          14
 typedef struct {
     uint32_t inodeNum;
-    uint32_t unk0;
+    uint32_t unk0_is_0x00100000; //is expected to be 0x00100000
     uint32_t elemSize;
     uint16_t namelen;
-    uint16_t unk2;
+    uint16_t type;
     char name[];
 } ATTRIBUTE_PACKED OrbisFSDirectoryElem_t;
 

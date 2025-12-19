@@ -52,19 +52,14 @@ std::vector<std::pair<std::string, OrbisFSInode_t>> OrbisFSInodeDirectory::listF
         retassure(elem->inodeNum, "unexpected zero elem");
         retassure(offset + elem->elemSize <= node->filesize, "elemsize goes oob");
         retassure(sizeof(*elem)+elem->namelen <= elem->elemSize, "namelen too long");
-
+#ifdef DEBUG
+        retassure(elem->unk0_is_0x00100000 == 0x00100000, "elem->unk0_is_0x00100000 is 0x%08x",elem->unk0_is_0x00100000);
+#endif
+        
         std::string elemName{elem->name,elem->name+elem->namelen};
         if (!includeSelfAndParent && (elemName == "." || elemName == "..")) continue;
 
-        OrbisFSInode_t *curInode = NULL;
-        try {
-            curInode = findInode(elem->inodeNum);
-        } catch (tihmstar::OrbisFSInodeBadMagic &e) {
-#ifdef XCODE
-            debug("Ignoring vanished elem '%s'",elemName.c_str());
-#endif
-            continue;
-        }
+        OrbisFSInode_t *curInode = findInode(elem->inodeNum);
         ret.push_back({
             elemName,
             *curInode
@@ -87,20 +82,15 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node
         retassure(elem->inodeNum, "unexpected zero elem");
         retassure(offset + elem->elemSize <= node->filesize, "elemsize goes oob");
         retassure(sizeof(*elem)+elem->namelen <= elem->elemSize, "namelen too long");
+#ifdef DEBUG
+        retassure(elem->unk0_is_0x00100000 == 0x00100000, "elem->unk0_is_0x00100000 is 0x%08x",elem->unk0_is_0x00100000);
+#endif
 
         std::string elemName{elem->name,elem->name+elem->namelen};
         if (elemName == "." || elemName == "..") continue;
         if (elemName != childname) continue;
 
-        OrbisFSInode_t *curInode = NULL;
-        try {
-            curInode = findInode(elem->inodeNum);
-        } catch (tihmstar::OrbisFSInodeBadMagic &e) {
-#ifdef XCODE
-            debug("Ignoring vanished elem '%s'",elemName.c_str());
-#endif
-            continue;
-        }
+        OrbisFSInode_t *curInode = findInode(elem->inodeNum);
         return curInode;
     }
 error:
