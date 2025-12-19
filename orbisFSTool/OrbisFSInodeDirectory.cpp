@@ -111,9 +111,6 @@ OrbisFSInode_t *OrbisFSInodeDirectory::findChildInDirectory(OrbisFSInode_t *node
             }
             return curInode;
         }
-        if (dirSize + _blockSize < node->filesize){
-            reterror("TODO: move to neext elems block!");
-        }
     }
 error:
     retcustomerror(OrbisFSFileNotFound,"Failed to find child '%s' in directory",childname.c_str());
