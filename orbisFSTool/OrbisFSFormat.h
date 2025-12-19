@@ -54,7 +54,6 @@ typedef struct {
 
 
 #define ORBIS_FS_DISKINFOBLOCK_MAGIC        0x20f50bf520190705
-#define ORBIS_FS_CHAIN_CONSECUTIVE          0xFFFFFFFF
 typedef struct {
     uint64_t magic;             //should be ORBIS_FS_ROOTDIRBLOCK_MAGIC
     uint64_t unk1_is_2;         //is expected to be 2
