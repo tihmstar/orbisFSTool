@@ -31,13 +31,18 @@ public:
     OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node, bool noFilemodeChecks = false);
     ~OrbisFSFile();
     
-#pragma IO operations
+#pragma mark IO operations
     uint64_t size();
     size_t read(void *buf, size_t len);
     size_t write(const void *buf, size_t len);
     
     size_t pread(void *buf, size_t len, uint64_t offset);
     size_t pwrite(const void *buf, size_t len, uint64_t offset);
+    
+#pragma mark resource IO
+    uint64_t resource_size();
+    size_t resource_pread(void *buf, size_t len, uint64_t offset);
+
     
 #pragma mark friends
     friend OrbisFSInodeDirectory;

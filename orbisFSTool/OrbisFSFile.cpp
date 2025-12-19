@@ -93,6 +93,7 @@ uint8_t *OrbisFSFile::getDataForOffset(uint64_t offset){
 }
 
 #pragma mark OrbisFSFile public
+#pragma mark IO operations
 uint64_t OrbisFSFile::size(){
     return _node->filesize;
 }
@@ -126,3 +127,37 @@ size_t OrbisFSFile::pread(void *buf, size_t len, uint64_t offset){
 size_t OrbisFSFile::pwrite(const void *buf, size_t len, uint64_t offset){
     reterror("TODO");
 }
+
+#pragma mark resource IO
+uint64_t OrbisFSFile::resource_size(){
+    /*
+        This is wrong, but idk how to get the actual size :(
+     */
+    uint64_t ret = 0;
+    for (int i=0; i<ARRAYOF(_node->resourceLnk); i++) {
+        if (_node->resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+        ret += _blockSize;
+    }
+    return ret;
+}
+
+size_t OrbisFSFile::resource_pread(void *buf, size_t len, uint64_t offset){
+    size_t rs = resource_size();
+
+    if (offset >= rs) return 0;
+    if (offset + len > rs) len = rs - offset;
+    if (!len) return 0;
+
+    uint32_t resouceBlockIdx = (uint32_t)(offset / _blockSize);
+    uint32_t resouceBlockOffset = offset & (_blockSize-1); //expected to be a power of 2
+
+    retassure(resouceBlockIdx < ARRAYOF(_node->resourceLnk), "resouceBlockIdx is out of bounds");
+
+    OrbisFSChainLink_t *rl = &_node->resourceLnk[resouceBlockIdx];
+    retassure(rl->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "tgt resouce chain link has bad type 0x%02x",rl->type);
+
+    uint8_t *block = _parent->getBlock(rl->blk);
+    memcpy(buf, &block[resouceBlockOffset], len);
+    return len;
+}
+

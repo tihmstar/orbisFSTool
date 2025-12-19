@@ -36,6 +36,7 @@ static struct option longopts[] = {
     { "verbose",            no_argument,        NULL, 'v' },
     { "writeable",          no_argument,        NULL, 'w' },
 
+    { "extract-resource",   no_argument,        NULL,  0  },
     { "inode",              required_argument,  NULL,  0  },
     { "mount",              required_argument,  NULL,  0  },
     { "offset",             required_argument,  NULL,  0  },
@@ -58,6 +59,7 @@ void cmd_help(){
            "  -r, --recursive\t\tperform operation recursively\n"
            "  -v, --verbose\t\t\tincrease logging output\n"
            "  -w, --writeable\t\topen image in write mode\n"
+           "      --extract-resource\textract file resource instead of file contents\n"
            "      --inode <num>\t\tspecify file by Inode instead of path\n"
            "      --mount <path>\t\tpath to mount\n"
            "      --offset <cnt>\t\toffset inside image\n"
@@ -127,6 +129,7 @@ int main_r(int argc, const char * argv[]) {
 
     bool doList = false;
     bool doExtract = false;
+    bool doExtractResource = false;
     
     bool dumpInode = false;
     
@@ -136,7 +139,9 @@ int main_r(int argc, const char * argv[]) {
             {
                 std::string curopt = longopts[optindex].name;
 
-                if (curopt == "inode") {
+                if (curopt == "extract-resource") {
+                    doExtractResource = true;
+                }else if (curopt == "inode"){
                     iNode = atoi(optarg);
                 }else if (curopt == "mount"){
                     mountPath = optarg;
@@ -229,18 +234,35 @@ int main_r(int argc, const char * argv[]) {
         size_t bufSize = img->getBlocksize();
         
         auto f = img->openFilAtPath(imagePath);
-        uint64_t size = f->size();
-        if (bufSize > size) bufSize = size;
-        assure(buf = (uint8_t*)calloc(1, bufSize));
+
         retassure((fd = open(outfile, O_CREAT | O_WRONLY, 0644)) != -1, "Failed to create output file '%s' errno=%d (%s)",outfile,errno,strerror(errno));
-        
-        while (size) {
-            size_t didread = 0;
-            retassure(didread = f->read(buf, bufSize), "Failed to read file");
-            retassure(write(fd, buf, bufSize) == bufSize, "Failed to write data to file '%s'",outfile);
-            size -= didread;
+
+        uint64_t size = doExtractResource ? f->resource_size() : f->size();
+        if (size) {
+            if (bufSize > size) bufSize = size;
+            assure(buf = (uint8_t*)calloc(1, bufSize));
+            
+            
+            if (doExtractResource){
+                uint64_t offset = 0;
+                while (size) {
+                    size_t didread = 0;
+                    retassure(didread = f->resource_pread(buf, bufSize, offset), "Failed to pread file resource");
+                    retassure(write(fd, buf, bufSize) == bufSize, "Failed to write data to file '%s'",outfile);
+                    offset += didread;
+                    size -= didread;
+                }
+                info("Extracted resource of '%s' to '%s'",imagePath.c_str(),outfile);
+            }else{
+                while (size) {
+                    size_t didread = 0;
+                    retassure(didread = f->read(buf, bufSize), "Failed to read file");
+                    retassure(write(fd, buf, bufSize) == bufSize, "Failed to write data to file '%s'",outfile);
+                    size -= didread;
+                }
+                info("Extracted '%s' to '%s'",imagePath.c_str(),outfile);
+            }
         }
-        info("Extracted '%s' to '%s'",imagePath.c_str(),outfile);
     } else if (doList) {
         if (!imagePath.size()) imagePath = "/";
         img->iterateOverFilesInFolder(imagePath, recursive, [&](std::string path, OrbisFSInode_t node){
@@ -299,7 +321,10 @@ int main_r(int argc, const char * argv[]) {
                 printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
                 printf("\taccessOrModDate   : %10lld (%s)\n",node.accessOrModDate,strForDate(node.accessOrModDate).c_str());
                 printf("\tmodOrAccessData   : %10lld (%s)\n",node.modOrAccessData,strForDate(node.modOrAccessData).c_str());
-                printf("\tresourceLnkMaybe  : type: 0x%02x blk: %d\n",node.resourceLnkMaybe.type,node.resourceLnkMaybe.blk);
+                for (int i=0; i<ARRAYOF(node.resourceLnk); i++) {
+                    if (node.resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+                    printf("\tresourceLnk[%2d]   : type: 0x%02x blk: %d\n",i,node.resourceLnk[i].type,node.resourceLnk[i].blk);
+                }
                 for (int i=0; i<ARRAYOF(node.dataLnk); i++) {
                     if (node.dataLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
                     printf("\tdataLnk[%2d]       : type: 0x%02x blk: %d\n",i,node.dataLnk[i].type,node.dataLnk[i].blk);
