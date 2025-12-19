@@ -74,10 +74,6 @@ typedef struct {
 
 
 #define ORBIS_FS_INODE_MAGIC                        0xbf10
-#define ORBIS_FS_INODE_ENTRY_TYPE_EMPTY             0
-#define ORBIS_FS_INODE_ENTRY_TYPE_SINGLEBLOCK       1
-#define ORBIS_FS_INODE_ENTRY_TYPE_MULTIBLOCK        2
-
 typedef struct {
     uint32_t magic;         //should be ORBIS_FS_INODE_MAGIC
     uint32_t fatStages;
