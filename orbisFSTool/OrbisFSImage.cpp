@@ -186,7 +186,7 @@ void OrbisFSImage::init(){
     printf("\tunk3              : 0x%llx\n",_diskinfoblock->unk3_is_0);
     printf("\tdevpath           : '%.*s'\n",(int)sizeof(_diskinfoblock->devpath),_diskinfoblock->devpath);
     printf("\tinodesInRootFolder: 0x%x (%d)\n",_diskinfoblock->inodesInRootFolder,_diskinfoblock->inodesInRootFolder);
-    printf("\tunk5              : 0x%x\n",_diskinfoblock->unk5_is_0xffffffff);
+    printf("\trdev              : 0x%x\n",_diskinfoblock->rdev_is_0xffffffff);
     printf("\thighestUsedInode  : 0x%x (%d)\n",_diskinfoblock->highestUsedInode,_diskinfoblock->highestUsedInode);
     printf("\tblocksUsed        : 0x%llx\n",_diskinfoblock->blocksUsed);
     printf("\tblocksAvailable   : 0x%llx\n",_diskinfoblock->blocksAvailable);
@@ -201,7 +201,7 @@ void OrbisFSImage::init(){
     retassure(_diskinfoblock->unk1_is_2 == 2, "unexpected value for unk1");
     retassure(_diskinfoblock->unk2_is_0x40 == 0x40, "unexpected value for unk2");
     retassure(_diskinfoblock->unk3_is_0 == 0, "unexpected value for unk3");
-    retassure(_diskinfoblock->unk5_is_0xffffffff == 0xFFFFFFFF, "unexpected value for unk5");
+    retassure(_diskinfoblock->rdev_is_0xffffffff == 0xFFFFFFFF, "unexpected value for rdev_is_0xffffffff");
     retassure(memvcmp(_diskinfoblock->_pad2, sizeof(_diskinfoblock->_pad2), 0x00), "_pad2 is not zero");
     retassure(!memcmp(&_diskinfoblock->diskinfoLnk, &_superblock->diskinfoLnk, sizeof(_superblock->diskinfoLnk)), "diskinfoLnk mismatch between superblock and diskinfoblock");
     retassure(_diskinfoblock->inodedirLnk.type == ORBIS_FS_CHAINLINK_TYPE_LINK, "Unexpected inodedirLnk.type");

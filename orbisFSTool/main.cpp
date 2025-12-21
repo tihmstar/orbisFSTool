@@ -327,11 +327,14 @@ int main_r(int argc, const char * argv[]) {
                 printf("\tuid               : %d\n",node.uid);
                 printf("\tgid               : %d\n",node.gid);
                 printf("\tunk1              : %d\n",node.unk1);
-                printf("\tunk2              : %d\n",node.unk2);
-                printf("\tunk3              : %d\n",node.unk3);
+                if (S_ISDIR(node.fileMode)) {
+                    printf("\tchildren          : %d\n",node.children);
+                }else{
+                    printf("\tunk2              : %d\n",node.unk2);
+                }
                 printf("\tfilesize          : 0x%016llx (%lld)\n",node.filesize,node.filesize);
-                printf("\tunk4              : %d\n",node.unk4);
-                printf("\tunk5              : %d\n",node.unk5);
+                printf("\tusedBlocks        : %d\n",node.usedBlocks);
+                printf("\tflags             : %d\n",node.flags);
                 printf("\tunk6              : %lld\n",node.unk6);
                 printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
                 printf("\tmodDate           : %10lld (%s)\n",node.modDate,strForDate(node.modDate).c_str());

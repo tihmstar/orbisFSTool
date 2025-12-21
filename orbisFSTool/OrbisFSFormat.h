@@ -61,7 +61,7 @@ typedef struct {
     uint64_t unk3_is_0;         //is expected to be 0
     char     devpath[0x100];
     uint32_t inodesInRootFolder;//all the child iNodes inside /
-    uint32_t unk5_is_0xffffffff;//is expected to be 0xFFFFFFFF
+    uint32_t rdev_is_0xffffffff;//is expected to be 0xFFFFFFFF
     uint32_t highestUsedInode;  //not neccessarily in use now, but was in use at some point
     uint8_t _pad2[0x34];
     uint64_t blocksUsed;
@@ -83,18 +83,21 @@ typedef struct {
     uint32_t uid;
     uint32_t gid;
     uint32_t unk1;
-    uint32_t unk2;
-    uint32_t unk3;
+    uint32_t _pad2;
+    union {
+        uint32_t children;      //only valid for directories??
+        uint32_t unk2;          //used for non-directories
+    };
     uint64_t filesize;
-    uint32_t unk4;
-    uint32_t unk5;
+    uint32_t usedBlocks;
+    uint32_t flags;     //only on '/user/app/NPXS40172/app.pkg' the value is 2, on all the other files it is 0
     uint64_t unk6;
     uint64_t createDate;
-    uint64_t _pad2;         //should be zero
-    uint64_t modDate;
     uint64_t _pad3;         //should be zero
-    uint64_t accessDate;
+    uint64_t modDate;
     uint64_t _pad4;         //should be zero
+    uint64_t accessDate;
+    uint64_t _pad5;         //should be zero
     OrbisFSChainLink_t resourceLnk[4];
     OrbisFSChainLink_t dataLnk[0x20];
 } ATTRIBUTE_PACKED OrbisFSInode_t;
