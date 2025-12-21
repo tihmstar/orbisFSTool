@@ -119,10 +119,12 @@ typedef struct {
 //#define DT_LNK          10
 //#define DT_SOCK         12
 //#define DT_WHT          14
+
+#define ORBIS_FS_DIRELEM_ELEMSIZE_MIN       0x30
 typedef struct {
     uint32_t inodeNum;
-    uint32_t unk0_is_0x00100000; //is expected to be 0x00100000
-    uint32_t elemSize;
+    uint32_t unk0_is_0x00100000;    //is expected to be 0x00100000
+    uint32_t elemSize;              //minsize is 0x30, always padded to 0x10 bytes
     uint16_t namelen;
     uint16_t type;
     char name[];
