@@ -73,31 +73,35 @@ typedef struct {
 
 
 #define ORBIS_FS_INODE_MAGIC                        0xbf10
+
+#define ORBIS_FS_INODE_TYPE_FILE                    1
+#define ORBIS_FS_INODE_TYPE_DIRECTORY               2
 typedef struct {
     uint32_t magic;         //should be ORBIS_FS_INODE_MAGIC
     uint32_t fatStages;
     uint32_t inodeNum;
     uint32_t _pad0;
     uint16_t fileMode;
-    uint8_t _pad1[2];     //should be zero
+    uint8_t _pad1[2];       //should be zero
     uint32_t uid;
     uint32_t gid;
     uint32_t unk1;
     uint32_t _pad2;
     union {
-        uint32_t children;      //only valid for directories??
-        uint32_t unk2;          //used for non-directories
+        uint32_t children;      //only valid for directories
+        uint32_t modCnt;        //only valid for files //how many times was this file changed? (blocks appended for example, or uid changed)
     };
     uint64_t filesize;
     uint32_t usedBlocks;
-    uint32_t flags;     //only on '/user/app/NPXS40172/app.pkg' the value is 2, on all the other files it is 0
-    uint64_t unk6;
+    uint32_t flags;         //only on '/user/app/NPXS40172/app.pkg' the value is 2, on all the other files it is 0
+    uint32_t type;
+    uint32_t _pad3;         //should be zero
     uint64_t createDate;
-    uint64_t _pad3;         //should be zero
-    uint64_t modDate;
     uint64_t _pad4;         //should be zero
-    uint64_t accessDate;
+    uint64_t modDate;
     uint64_t _pad5;         //should be zero
+    uint64_t accessDate;
+    uint64_t _pad6;         //should be zero
     OrbisFSChainLink_t resourceLnk[4];
     OrbisFSChainLink_t dataLnk[0x20];
 } ATTRIBUTE_PACKED OrbisFSInode_t;

@@ -330,12 +330,12 @@ int main_r(int argc, const char * argv[]) {
                 if (S_ISDIR(node.fileMode)) {
                     printf("\tchildren          : %d\n",node.children);
                 }else{
-                    printf("\tunk2              : %d\n",node.unk2);
+                    printf("\tmodCnt            : %d\n",node.modCnt);
                 }
                 printf("\tfilesize          : 0x%016llx (%lld)\n",node.filesize,node.filesize);
                 printf("\tusedBlocks        : %d\n",node.usedBlocks);
                 printf("\tflags             : %d\n",node.flags);
-                printf("\tunk6              : %lld\n",node.unk6);
+                printf("\ttype              : %d\n",node.type);
                 printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
                 printf("\tmodDate           : %10lld (%s)\n",node.modDate,strForDate(node.modDate).c_str());
                 printf("\taccessDate        : %10lld (%s)\n",node.accessDate,strForDate(node.accessDate).c_str());
