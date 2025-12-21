@@ -85,7 +85,7 @@ typedef struct {
     uint8_t _pad1[2];       //should be zero
     uint32_t uid;
     uint32_t gid;
-    uint32_t unk1;
+    uint32_t birthCnt;      //how many times has this node existed at the same location with the same name. Set to 1 for new nodes, increase every time node was deleted, then re-created with the same name at the same location.
     uint32_t _pad2;
     union {
         uint32_t children;      //only valid for directories

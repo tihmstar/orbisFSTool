@@ -326,7 +326,7 @@ int main_r(int argc, const char * argv[]) {
                 printf("\tfileMode          :  o0%o\n",node.fileMode);
                 printf("\tuid               : %d\n",node.uid);
                 printf("\tgid               : %d\n",node.gid);
-                printf("\tunk1              : %d\n",node.unk1);
+                printf("\tbirthCnt          : %d\n",node.birthCnt);
                 if (S_ISDIR(node.fileMode)) {
                     printf("\tchildren          : %d\n",node.children);
                 }else{
