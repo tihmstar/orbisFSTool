@@ -79,8 +79,10 @@ typedef struct {
     uint32_t inodeNum;
     uint32_t _pad0;
     uint16_t fileMode;
-    uint8_t _pad1[6];     //should be zero
-    uint64_t unk1;
+    uint8_t _pad1[2];     //should be zero
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t unk1;
     uint32_t unk2;
     uint32_t unk3;
     uint64_t filesize;
@@ -89,9 +91,9 @@ typedef struct {
     uint64_t unk6;
     uint64_t createDate;
     uint64_t _pad2;         //should be zero
-    uint64_t accessOrModDate;
+    uint64_t modDate;
     uint64_t _pad3;         //should be zero
-    uint64_t modOrAccessDate;
+    uint64_t accessDate;
     uint64_t _pad4;         //should be zero
     OrbisFSChainLink_t resourceLnk[4];
     OrbisFSChainLink_t dataLnk[0x20];

@@ -290,10 +290,17 @@ int main_r(int argc, const char * argv[]) {
                 printInfo += perm;
                 {
                     char buf[0x400];
-                    uint64_t fsize = S_ISDIR(node.fileMode) ? 0 : node.filesize;
-                    snprintf(buf, sizeof(buf), "%10llu ",fsize);
-                    printInfo += buf;
-                    printInfo += strForDate(node.accessOrModDate)+"\t";
+                    {
+                        int didprint = snprintf(buf, sizeof(buf), " %d:%d ",node.uid,node.gid);
+                        printInfo += buf;
+                        while (didprint++ < 7) printInfo+=" ";
+                    }
+                    {
+                        uint64_t fsize = S_ISDIR(node.fileMode) ? 0 : node.filesize;
+                        snprintf(buf, sizeof(buf), "%10llu ",fsize);
+                        printInfo += buf;
+                        printInfo += strForDate(node.modDate)+"\t";
+                    }
                 }
             }
             
@@ -317,10 +324,18 @@ int main_r(int argc, const char * argv[]) {
                 printf("\tfatStages         : 0x%08x\n",node.fatStages);
                 printf("\tinodeNum          : 0x%08x\n",node.inodeNum);
                 printf("\tfileMode          :  o0%o\n",node.fileMode);
+                printf("\tuid               : %d\n",node.uid);
+                printf("\tgid               : %d\n",node.gid);
+                printf("\tunk1              : %d\n",node.unk1);
+                printf("\tunk2              : %d\n",node.unk2);
+                printf("\tunk3              : %d\n",node.unk3);
                 printf("\tfilesize          : 0x%016llx (%lld)\n",node.filesize,node.filesize);
+                printf("\tunk4              : %d\n",node.unk4);
+                printf("\tunk5              : %d\n",node.unk5);
+                printf("\tunk6              : %lld\n",node.unk6);
                 printf("\tcreateDate        : %10lld (%s)\n",node.createDate,strForDate(node.createDate).c_str());
-                printf("\taccessOrModDate   : %10lld (%s)\n",node.accessOrModDate,strForDate(node.accessOrModDate).c_str());
-                printf("\tmodOrAccessDate   : %10lld (%s)\n",node.modOrAccessDate,strForDate(node.modOrAccessDate).c_str());
+                printf("\tmodDate           : %10lld (%s)\n",node.modDate,strForDate(node.modDate).c_str());
+                printf("\taccessDate        : %10lld (%s)\n",node.accessDate,strForDate(node.accessDate).c_str());
                 for (int i=0; i<ARRAYOF(node.resourceLnk); i++) {
                     if (node.resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
                     printf("\tresourceLnk[%2d]   : type: 0x%02x blk: %d\n",i,node.resourceLnk[i].type,node.resourceLnk[i].blk);
