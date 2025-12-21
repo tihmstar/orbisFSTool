@@ -222,6 +222,38 @@ std::shared_ptr<OrbisFSFile> OrbisFSImage::openFileNode(OrbisFSInode_t *node, bo
     return std::make_shared<OrbisFSFile>(this, node, noFilemodeChecks);
 }
 
+bool OrbisFSImage::checkBlockAllocations(){
+    OrbisFSBlockAllocator va(this, _superblock->blockAllocatorLnk.blk, true);
+    
+    va.freeBlock(_superblock->blockAllocatorLnk.blk);
+    va.freeBlock(_superblock->diskinfoLnk.blk);
+    {
+        OrbisFSAllocatorInfoElem_t *aie = (OrbisFSAllocatorInfoElem_t*)getBlock(_superblock->blockAllocatorLnk.blk);
+        uint32_t elemsCnt = getBlocksize() / sizeof(*aie);
+        for (int i=0; i<elemsCnt; i++) {
+            if (aie[i].bitmapBlk.type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+            va.freeBlock(aie[i].bitmapBlk.blk);
+        }
+    }
+
+    auto fInodes = openFileNode(_inodeDir->findInode(kOrbisFSInodeRootDirID), true);
+    {
+        OrbisFSInode_t node = {};
+        while (fInodes->read(&node, sizeof(node)) == sizeof(node)) {
+            if (node.magic != ORBIS_FS_INODE_MAGIC) continue;
+            
+            auto fnode = openFileNode(&node, true);
+            
+            auto usedBlks = fnode->getAllAllocatedBlocks();
+            for (auto b : usedBlks) {
+                va.freeBlock(b);
+            }
+        }
+    }
+    
+    return va.getFreeBlocksNum()+1 == va.getTotalBlockNum();
+}
+
 #pragma mark OrbisFSImage public
 bool OrbisFSImage::isWriteable(){
     return _writeable;
@@ -298,4 +330,15 @@ void OrbisFSImage::iterateOverFilesInFolder(std::string path, bool recursive, st
             }
         }
     }while(files.size());
+}
+
+bool OrbisFSImage::check(){
+    info("Checking block allocations...");
+    if (!checkBlockAllocations()) goto fail;
+    
+success:
+    return true;
+fail:
+    error("check failed!");
+    return false;
 }

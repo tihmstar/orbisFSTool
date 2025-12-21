@@ -45,6 +45,7 @@ class OrbisFSImage{
     void init();
     uint8_t *getBlock(uint32_t blknum);
     std::shared_ptr<OrbisFSFile> openFileNode(OrbisFSInode_t *node, bool noFilemodeChecks = false);
+    bool checkBlockAllocations();
 public:
     OrbisFSImage(const char *path, bool writeable, uint64_t offset = 0);
     ~OrbisFSImage();
@@ -59,6 +60,8 @@ public:
     OrbisFSInode_t getInodeForPath(std::string path);
 
     void iterateOverFilesInFolder(std::string path, bool recursive, std::function<void(std::string path, OrbisFSInode_t node)> callback);
+    
+    bool check();
     
 #pragma mark files
     std::shared_ptr<OrbisFSFile> openFileID(uint32_t inode);

@@ -36,6 +36,7 @@ static struct option longopts[] = {
     { "verbose",            no_argument,        NULL, 'v' },
     { "writeable",          no_argument,        NULL, 'w' },
 
+    { "check",              no_argument,        NULL,  0  },
     { "extract-resource",   no_argument,        NULL,  0  },
     { "inode",              required_argument,  NULL,  0  },
     { "mount",              required_argument,  NULL,  0  },
@@ -59,6 +60,7 @@ void cmd_help(){
            "  -r, --recursive\t\tperform operation recursively\n"
            "  -v, --verbose\t\t\tincrease logging output\n"
            "  -w, --writeable\t\topen image in write mode\n"
+           "      --check\tperform some checks on the image\n"
            "      --extract-resource\textract file resource instead of file contents\n"
            "      --inode <num>\t\tspecify file by Inode instead of path\n"
            "      --mount <path>\t\tpath to mount\n"
@@ -130,6 +132,7 @@ int main_r(int argc, const char * argv[]) {
     bool doList = false;
     bool doExtract = false;
     bool doExtractResource = false;
+    bool doCheck = false;
     
     bool dumpInode = false;
     
@@ -139,7 +142,9 @@ int main_r(int argc, const char * argv[]) {
             {
                 std::string curopt = longopts[optindex].name;
 
-                if (curopt == "extract-resource") {
+                if (curopt == "check") {
+                    doCheck = true;
+                }else if (curopt == "extract-resource"){
                     doExtractResource = true;
                 }else if (curopt == "inode"){
                     iNode = atoi(optarg);
@@ -215,6 +220,12 @@ int main_r(int argc, const char * argv[]) {
     }
     
     std::shared_ptr<OrbisFSImage> img = std::make_shared<OrbisFSImage>(infile, writeable, offset);
+    
+    if (doCheck) {
+        info("Performing image check");
+        retassure(img->check(), "image check failed!");
+        info("Image check succeeded!");
+    }
     
     if (!imagePath.size() && iNode) {
         char buf[0x100] = {};

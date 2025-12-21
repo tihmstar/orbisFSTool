@@ -10,6 +10,8 @@
 
 #include "OrbisFSFormat.h"
 
+#include <vector>
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -27,6 +29,7 @@ class OrbisFSFile {
     
     uint8_t *getDataBlock(uint64_t num);
     uint8_t *getDataForOffset(uint64_t offset);
+    std::vector<uint32_t> getAllAllocatedBlocks();
 public:
     OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node, bool noFilemodeChecks = false);
     ~OrbisFSFile();
@@ -46,6 +49,7 @@ public:
     
 #pragma mark friends
     friend OrbisFSInodeDirectory;
+    friend OrbisFSImage;
 };
 
 }

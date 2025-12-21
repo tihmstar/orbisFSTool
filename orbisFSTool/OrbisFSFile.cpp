@@ -54,6 +54,7 @@ uint8_t *OrbisFSFile::getDataBlock(uint64_t num){
     retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
     if (_node->fatStages == 1){
         retassure(num < ARRAYOF(_node->dataLnk), "1 level stage lookup out of bounds");
+        retassure(_node->dataLnk[num].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[num].type);
         return _parent->getBlock(_node->dataLnk[num].blk);
     }
 
@@ -77,6 +78,7 @@ uint8_t *OrbisFSFile::getDataBlock(uint64_t num){
     /*
         Stage 2 lookup
      */
+    retassure(num < linkElemsPerPage, "Trying to access out of bounds block on stage 3 lookup");
     fat = &fat[num];
     retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
     return _parent->getBlock(fat->blk);
@@ -90,6 +92,41 @@ uint8_t *OrbisFSFile::getDataForOffset(uint64_t offset){
     uint8_t *blk = getDataBlock(blkIdx);
     
     return &blk[blkOffset];
+}
+
+std::vector<uint32_t> OrbisFSFile::getAllAllocatedBlocks(){
+    const uint32_t linkElemsPerPage = _blockSize/sizeof(OrbisFSChainLink_t);
+    std::vector<uint32_t> ret;
+    if (!_node->fatStages){
+        return {};
+    }else if (_node->fatStages == 1) {
+        for (int i=0; i<ARRAYOF(_node->dataLnk); i++) {
+            if (_node->dataLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+            ret.push_back(_node->dataLnk[i].blk);
+        }
+    }else if (_node->fatStages == 2){
+        retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
+        OrbisFSChainLink_t *fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[0].blk);
+        ret.push_back(_node->dataLnk[0].blk);
+        
+        for (int i=0; i < linkElemsPerPage; i++) {
+            if (fat[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+            ret.push_back(fat[i].blk);
+        }
+    }else if (_node->fatStages == 3){
+        
+        reterror("TODO");
+    }else{
+        reterror("%d fat stages currently not supported",_node->fatStages);
+    }
+    
+    //also count resource blocks
+    for (int i=0; i<ARRAYOF(_node->resourceLnk); i++) {
+        if (_node->resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+        ret.push_back(_node->resourceLnk[i].blk);
+    }
+    
+    return ret;
 }
 
 #pragma mark OrbisFSFile public
