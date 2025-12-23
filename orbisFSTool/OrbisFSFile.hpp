@@ -30,6 +30,9 @@ class OrbisFSFile {
     uint8_t *getDataBlock(uint64_t num);
     uint8_t *getDataForOffset(uint64_t offset);
     std::vector<uint32_t> getAllAllocatedBlocks();
+    void popLastAllocatedBlock();
+    void shrink(uint64_t subBytes);
+    void grow(uint64_t addBytes);
 public:
     OrbisFSFile(OrbisFSImage *parent, OrbisFSInode_t *node, bool noFilemodeChecks = false);
     ~OrbisFSFile();
@@ -41,6 +44,8 @@ public:
     
     size_t pread(void *buf, size_t len, uint64_t offset);
     size_t pwrite(const void *buf, size_t len, uint64_t offset);
+    
+    void resize(uint64_t size);
     
 #pragma mark resource IO
     uint64_t resource_size();

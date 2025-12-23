@@ -57,31 +57,28 @@ uint8_t *OrbisFSFile::getDataBlock(uint64_t num){
         retassure(_node->dataLnk[num].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[num].type);
         return _parent->getBlock(_node->dataLnk[num].blk);
     }
-
-    /*
-        Multistage lookup here
-     */
-    OrbisFSChainLink_t *fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[0].blk);
-    if (_node->fatStages >= 3) {
-        retassure(_node->fatStages < 4, "4 level stage lookup not supported");
-        /*
-            Stage 3 lookup
-         */
-        uint64_t stage3Idx = num / linkElemsPerPage;
-        retassure(stage3Idx < linkElemsPerPage, "Trying to access out of bounds block on stage 3 lookup");
-        num %= linkElemsPerPage;
-        fat = &fat[stage3Idx];
-        retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x in stage 3 lookup",fat->type);
-        fat = (OrbisFSChainLink_t*)_parent->getBlock(fat->blk);
-    }
     
-    /*
-        Stage 2 lookup
-     */
-    retassure(num < linkElemsPerPage, "Trying to access out of bounds block on stage 3 lookup");
-    fat = &fat[num];
-    retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
-    return _parent->getBlock(fat->blk);
+    OrbisFSChainLink_t *fat = NULL;
+    for (int i=_node->fatStages-1; i>=0; i--) {
+        uint64_t elemsInThisStage = 1;
+        for (int z=0; z<i; z++) elemsInThisStage *= linkElemsPerPage;
+        uint32_t curIdx = (uint32_t)(num / elemsInThisStage);
+        num %= elemsInThisStage;
+        
+        if (!fat) {
+            //this is the first level lookup
+            retassure(curIdx < ARRAYOF(_node->dataLnk), "1 level lookup out of bounds");
+            retassure(_node->dataLnk[curIdx].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[curIdx].type);
+            fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[curIdx].blk);
+        }else{
+            //this is further level lookup
+            retassure(curIdx < linkElemsPerPage, "Trying to access out of bounds block on stage %d lookup",_node->fatStages-(i-1));
+            fat = &fat[curIdx];
+            retassure(fat->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",fat->type);
+            fat = (OrbisFSChainLink_t*)_parent->getBlock(fat->blk);
+        }
+    }
+    return (uint8_t*)fat;
 }
 
 uint8_t *OrbisFSFile::getDataForOffset(uint64_t offset){
@@ -105,14 +102,8 @@ std::vector<uint32_t> OrbisFSFile::getAllAllocatedBlocks(){
             ret.push_back(_node->dataLnk[i].blk);
         }
     }else if (_node->fatStages == 2){
-        retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",_node->dataLnk[0].type);
-        OrbisFSChainLink_t *fat = (OrbisFSChainLink_t*)_parent->getBlock(_node->dataLnk[0].blk);
-        ret.push_back(_node->dataLnk[0].blk);
-        
-        for (int i=0; i < linkElemsPerPage; i++) {
-            if (fat[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
-            ret.push_back(fat[i].blk);
-        }
+        reterror("TODO");
+
     }else if (_node->fatStages == 3){
         
         reterror("TODO");
@@ -127,6 +118,105 @@ std::vector<uint32_t> OrbisFSFile::getAllAllocatedBlocks(){
     }
     
     return ret;
+}
+
+void OrbisFSFile::popLastAllocatedBlock(){
+    const uint32_t linkElemsPerPage = _blockSize/sizeof(OrbisFSChainLink_t);
+    OrbisFSChainLink_t *tgt = NULL;
+    uint32_t curIdx = 0;
+    int fatEndStage = 0;
+    uint32_t usedResourceBlocks = 0;
+    
+    for (int i=0; i<ARRAYOF(_node->resourceLnk); i++) {
+        if (_node->resourceLnk[i].type != ORBIS_FS_CHAINLINK_TYPE_LINK) break;
+        usedResourceBlocks++;
+    }
+    
+    if (!_node->fatStages){
+        reterror("No stages available");
+    }else if (_node->fatStages == 1) {
+        for (int i=ARRAYOF(_node->dataLnk)-1; i>=0; i--) {
+            if (_node->dataLnk[i].type == ORBIS_FS_CHAINLINK_TYPE_LINK){
+                tgt = &_node->dataLnk[i];
+                if (i==0) _node->fatStages = 0;
+                break;
+            }
+        }
+    }else{
+    rePopBlock:
+        retassure(_node->usedBlocks, "Why does this node not use any blocks??");
+        uint64_t num = _node->filesize / _blockSize;
+        if ((_node->filesize & (_blockSize-1)) == 0) num--; //num is actually blockIndex not blockNumber
+        
+        OrbisFSChainLink_t *fat = NULL;
+        for (int i=_node->fatStages-1; i>=fatEndStage; i--) {
+            uint64_t elemsInThisStage = 1;
+            for (int z=0; z<i; z++) elemsInThisStage *= linkElemsPerPage;
+            curIdx = (uint32_t)(num / elemsInThisStage);
+            num %= elemsInThisStage;
+            
+            if (!fat) {
+                //this is the first level lookup
+                retassure(curIdx < ARRAYOF(_node->dataLnk), "1 level lookup out of bounds");
+                tgt = &_node->dataLnk[curIdx];
+                retassure(tgt->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad dataLnk type 0x%02x",tgt->type);
+                fat = (OrbisFSChainLink_t*)_parent->getBlock(tgt->blk);
+            }else{
+                //this is further level lookup
+                retassure(curIdx < linkElemsPerPage, "Trying to access out of bounds block on stage %d lookup",_node->fatStages-(i-1));
+                tgt = &fat[curIdx];
+                retassure(tgt->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "bad fat type 0x%02x",tgt->type);
+                fat = (OrbisFSChainLink_t*)_parent->getBlock(tgt->blk);
+            }
+        }
+    }
+       
+    retassure(_node->fatStages < 4, "4 level stages currently not supported!");
+    
+    {
+        uint32_t blk = tgt->blk;
+        memset(tgt, 0xFF, sizeof(*tgt));
+        _parent->freeBlock(blk);
+        _node->usedBlocks--;
+        if (curIdx == 0 && (_node->fatStages-fatEndStage > 1)) {
+            fatEndStage++;
+            goto rePopBlock;
+        } else if (curIdx == 1 && (
+                                   (_node->fatStages == 2 && _node->usedBlocks == 2+usedResourceBlocks)
+                                   || (_node->fatStages == 3 && _node->usedBlocks == linkElemsPerPage+2+usedResourceBlocks)
+                                   )){
+            /*
+                We are at fatStages>=2 but we can downgrage to fatStages>=1 here
+             */
+            retassure(_node->dataLnk[0].type == ORBIS_FS_CHAINLINK_TYPE_LINK, "unexpecte invalid dataLnk[0] when attepmting to downgrade fatStages 2 -> 1");
+            blk = _node->dataLnk[0].blk;
+            tgt = (OrbisFSChainLink_t*)_parent->getBlock(blk);
+            retassure(tgt->type == ORBIS_FS_CHAINLINK_TYPE_LINK, "unexpecte invalid tgt when attepmting to downgrade fatStages 2 -> 1");
+            _node->dataLnk[0] = *tgt;
+            _parent->freeBlock(blk);
+            _node->usedBlocks--;
+            _node->fatStages--;
+        }
+    }
+}
+
+void OrbisFSFile::shrink(uint64_t subBytes){
+    retassure(_node->filesize >= subBytes, "trying to shrink more bytes than available");
+    while (subBytes) {
+        uint64_t lastBlockFill = _node->filesize & (_blockSize-1);
+        if (!lastBlockFill && _node->filesize >= _blockSize) lastBlockFill = _blockSize;
+        if (subBytes >= lastBlockFill) {
+            popLastAllocatedBlock();
+        }else{
+            lastBlockFill = subBytes;
+        }
+        _node->filesize -= lastBlockFill;
+        subBytes -= lastBlockFill;
+    }
+}
+
+void OrbisFSFile::grow(uint64_t addBytes){
+    reterror("TODO");
 }
 
 #pragma mark OrbisFSFile public
@@ -163,6 +253,14 @@ size_t OrbisFSFile::pread(void *buf, size_t len, uint64_t offset){
 
 size_t OrbisFSFile::pwrite(const void *buf, size_t len, uint64_t offset){
     reterror("TODO");
+}
+
+void OrbisFSFile::resize(uint64_t size){
+    if (size < _node->filesize) {
+        shrink(_node->filesize-size);
+    }else if (size > _node->filesize){
+        grow(size-_node->filesize);
+    }
 }
 
 #pragma mark resource IO

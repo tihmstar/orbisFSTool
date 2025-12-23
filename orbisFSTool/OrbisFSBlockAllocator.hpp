@@ -36,6 +36,7 @@ public:
     uint64_t getFreeBlocksNum();
     bool isBlockFree(uint32_t blkNum);
     void freeBlock(uint32_t blkNum);
+    uint32_t allocateBlock();
 };
 
 }

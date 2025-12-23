@@ -41,6 +41,7 @@ static struct option longopts[] = {
     { "inode",              required_argument,  NULL,  0  },
     { "mount",              required_argument,  NULL,  0  },
     { "offset",             required_argument,  NULL,  0  },
+    { "resize-file",        required_argument,  NULL,  0  },
 
     //advanced debugging
     { "dump-inode",         no_argument,        NULL,  0  },
@@ -65,6 +66,7 @@ void cmd_help(){
            "      --inode <num>\t\tspecify file by Inode instead of path\n"
            "      --mount <path>\t\tpath to mount\n"
            "      --offset <cnt>\t\toffset inside image\n"
+           "      --resize-file <size>\t\tresize file inside image\n"
            "\n"
            //advanced debugging
            "      --dump-inode\t\tdump inode structure\n"
@@ -122,6 +124,7 @@ int main_r(int argc, const char * argv[]) {
     std::string imagePath;
 
     uint64_t offset = 0;
+    uint64_t newFileSize = 0;
     uint32_t iNode = 0;
     
     int verbosity = 0;
@@ -133,10 +136,11 @@ int main_r(int argc, const char * argv[]) {
     bool doExtract = false;
     bool doExtractResource = false;
     bool doCheck = false;
+    bool doResizeFile = false;
     
     bool dumpInode = false;
     
-    while ((opt = getopt_long(argc, (char* const *)argv, "he::i:l::o:rvw", longopts, &optindex)) >= 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "he::i:l::o:p:rvw", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0: //long opts
             {
@@ -152,6 +156,9 @@ int main_r(int argc, const char * argv[]) {
                     mountPath = optarg;
                 }else if (curopt == "offset"){
                     offset = parseNum(optarg);
+                }else if (curopt == "resize-file"){
+                    doResizeFile = true;
+                    newFileSize = parseNum(optarg);
 
                 }else if (curopt == "dump-inode"){
                     dumpInode = true;
@@ -363,6 +370,10 @@ int main_r(int argc, const char * argv[]) {
                 }
             }
         });
+    }else if (doResizeFile) {
+        retassure(imagePath.size(), "No path for resize specified");
+        auto f = img->openFilAtPath(imagePath);
+        f->resize(newFileSize);
     }else if (mountPath) {
         info("Mounting disk");
         OrbisFSFuse off(img, mountPath);

@@ -43,6 +43,10 @@ OrbisFSImage::OrbisFSImage(const char *path, bool writeable, uint64_t offset)
 , _inodeDir(nullptr)
 , _references(0)
 {
+#ifndef DEBUG
+    retassure(!_writeable, "Experimental write support is only available in DEBUG builds!");
+#endif
+    
     retassure((_fd = open(path, writeable ? O_RDWR : O_RDONLY)) != -1, "Failed to open=%s",path);
     {
         struct stat st = {};
@@ -84,7 +88,7 @@ OrbisFSImage::OrbisFSImage(const char *path, bool writeable, uint64_t offset)
     retassure(_memsize, "Failed to detect image size!");
     retassure(_memsize > offset, "offset beyond image size");
     _memsize -= offset;
-    if ((_mem = (uint8_t*)mmap(NULL, _memsize, PROT_READ | (writeable ? PROT_WRITE : 0), MAP_FILE | (writeable ? MAP_SHARED : MAP_PRIVATE), _fd, offset)) == MAP_FAILED){
+    if ((_mem = (uint8_t*)mmap(NULL, _memsize, PROT_READ | PROT_WRITE, MAP_FILE | (writeable ? MAP_SHARED : MAP_PRIVATE), _fd, offset)) == MAP_FAILED){
         reterror("Failed to mmap '%s' errno=%d (%s)",path,errno,strerror(errno));
     }
     init();
@@ -252,6 +256,11 @@ bool OrbisFSImage::checkBlockAllocations(){
     }
     
     return va.getFreeBlocksNum()+1 == va.getTotalBlockNum();
+}
+
+void OrbisFSImage::freeBlock(uint32_t blk){
+    _blockAllocator->freeBlock(blk);
+    _diskinfoblock->blocksUsed--;
 }
 
 #pragma mark OrbisFSImage public

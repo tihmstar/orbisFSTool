@@ -108,3 +108,7 @@ void OrbisFSBlockAllocator::freeBlock(uint32_t blkNum){
     }
     reterror("failed to find block in bitmap");
 }
+
+uint32_t OrbisFSBlockAllocator::allocateBlock(){
+    reterror("TODO");
+}
